@@ -1,6 +1,6 @@
 # FINANCO
 
-Aplicacao Next.js para controle financeiro pessoal.
+Aplicacao Next.js para controle financeiro pessoal com Firebase App Hosting e Cloud Firestore.
 
 ## Requisitos
 
@@ -15,63 +15,54 @@ Aplicacao Next.js para controle financeiro pessoal.
 npm install
 ```
 
-2. Crie o arquivo `.env` com base em `.env.example`.
-
-3. Inicie o app:
+2. Inicie o app:
 
 ```bash
 npm run dev -- --port 3002
 ```
 
-4. Abra:
+3. Abra:
 
 ```text
 http://127.0.0.1:3002/dashboard
 ```
 
+## Deploy web
+
+Aplicacao publicada em:
+
+```text
+https://financo--financo-260308.us-central1.hosted.app/dashboard
+```
+
 ## Banco de dados
 
-O projeto usa Prisma com SQLite para desenvolvimento local.
+O projeto usa Cloud Firestore no Firebase.
 
-Arquivos locais:
+O seed inicial de categorias e conta padrao e criado automaticamente pela camada de dados quando o banco esta vazio.
 
-- `prisma/dev.db`
-- `dev.db`
+## Firebase
 
-Para producao em Firebase App Hosting, o SQLite local nao e adequado. E necessario trocar `DATABASE_URL` para um banco gerenciado e persistente, como PostgreSQL.
+Projeto:
+
+```text
+financo-260308
+```
+
+Stack usada:
+
+- Firebase App Hosting
+- Cloud Firestore
 
 ## GitHub
 
-Fluxo previsto para publicar como um novo projeto `FINANCO`:
+Repositorio:
 
-```bash
-git init
-git branch -M main
-git add .
-git commit -m "Initial commit"
-git remote add origin <URL_DO_REPOSITORIO>
-git push -u origin main
-```
-
-## Firebase App Hosting
-
-O deploy recomendado para este app Next.js com SSR e Firebase App Hosting.
-
-Antes do deploy em producao:
-
-- definir um `DATABASE_URL` de banco persistente
-- definir a URL publica final em `NEXT_PUBLIC_APP_URL`
-- vincular o repositório GitHub ao backend do App Hosting
-
-Com o Firebase CLI autenticado, o fluxo geral e:
-
-```bash
-firebase init apphosting
-firebase deploy
+```text
+https://github.com/LuizinhoScuad/FINANCO
 ```
 
 ## Observacoes
 
-- `.env` e arquivos `.db` nao devem ir para o GitHub
-- o script `npm run dev` foi ajustado para usar `webpack` no desenvolvimento por estabilidade local
-- deploy configurado para Firebase App Hosting
+- o script `npm run dev` usa `webpack` no desenvolvimento por estabilidade local
+- o app foi ajustado para operar sem Prisma e sem SQLite
