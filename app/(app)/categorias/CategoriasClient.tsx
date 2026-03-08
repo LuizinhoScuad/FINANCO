@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCategory, deleteCategory } from "@/actions/categories";
-import type { Category } from "@prisma/client";
+import type { Category } from "@/types";
 
 const ICONS = ["🏠", "🍔", "🚗", "🏥", "💊", "🎬", "📚", "✈️", "👕", "⚡", "📱", "💰", "🐶", "🏋", "🎮", "🛒", "💼", "🔧", "🎵", "🍺"];
 const COLORS = ["#00d98b", "#ff4d6d", "#f59e0b", "#60a5fa", "#f97316", "#34d399", "#fb7185", "#a3e635"];

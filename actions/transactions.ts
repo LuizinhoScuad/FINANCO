@@ -150,7 +150,7 @@ export async function getMonthSummary(month: number, year: number) {
 }
 
 export async function getMonthlyHistory(months = 6) {
-    const result = [];
+    const result: Array<{ month: number; year: number; income: number; expense: number; balance: number }> = [];
     const now = new Date();
     for (let i = months - 1; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -163,7 +163,7 @@ export async function getMonthlyHistory(months = 6) {
 }
 
 export async function getForecastHistory(months = 3) {
-    const result = [];
+    const result: Array<{ month: number; year: number; income: number; expense: number; balance: number }> = [];
     const now = new Date();
     // Start from next month
     for (let i = 1; i <= months; i++) {
