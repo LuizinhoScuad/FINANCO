@@ -1,3 +1,15 @@
 env:
   - variable: NEXT_PUBLIC_APP_URL
     value: https://financo--financo-260308.us-central1.hosted.app
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyCfxjyt-fZnXC0ueCk6BmR4jnRt-_s9Qv0
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: financo-260308.firebaseapp.com
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: financo-260308
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: financo-260308.firebasestorage.app
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "64024920706"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:64024920706:web:41e3cc4b3f3a0a562caa9b

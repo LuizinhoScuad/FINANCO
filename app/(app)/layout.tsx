@@ -1,6 +1,9 @@
+import { requireCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+    await requireCurrentUser();
+
     return (
         <div style={{ display: "flex", minHeight: "100vh" }}>
             <Sidebar />
