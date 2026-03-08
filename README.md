@@ -74,3 +74,4 @@ firebase deploy
 
 - `.env` e arquivos `.db` nao devem ir para o GitHub
 - o script `npm run dev` foi ajustado para usar `webpack` no desenvolvimento por estabilidade local
+- deploy configurado para Firebase App Hosting
