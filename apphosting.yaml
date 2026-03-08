@@ -1,0 +1,10 @@
+env:
+  - variable: DATABASE_URL
+    value: file:./dev.db
+  - variable: NEXT_PUBLIC_APP_URL
+    value: https://financo--financo-260308.us-central1.hosted.app
+
+outputFiles:
+  serverApp:
+    include:
+      - prisma/dev.db
