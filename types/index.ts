@@ -5,7 +5,7 @@ export type AccountType = "CASH" | "BANK" | "SAVINGS" | "INVESTMENT";
 export interface Account {
     id: string;
     name: string;
-    type: AccountType;
+    type: string;
     color: string;
     balance: number;
     createdAt: Date;
@@ -16,7 +16,7 @@ export interface Category {
     id: string;
     name: string;
     icon: string;
-    type: TxType;
+    type: string;
     color: string;
     createdAt: Date;
 }
@@ -25,8 +25,8 @@ export interface Transaction {
     id: string;
     description: string;
     amount: number;
-    type: TxType;
-    status: "COMPLETED" | "PENDING";
+    type: string;
+    status: string;
     date: Date;
     accountId: string;
     categoryId: string;

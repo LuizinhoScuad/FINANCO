@@ -34,14 +34,14 @@ export function MonthlyBarChart({ data }: { data: Entry[] }) {
                     tick={{ fill: "#6b7a99", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`}
+                    tickFormatter={(v) => `R$${(Number(v ?? 0) / 1000).toFixed(0)}k`}
                     width={48}
                 />
                 <Tooltip
                     contentStyle={{ backgroundColor: "#111827", border: "1px solid #1f2d3d", borderRadius: "2px", fontSize: "13px" }}
                     labelStyle={{ color: "#e8eaf0" }}
-                    formatter={(value: number) =>
-                        new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
+                    formatter={(value) =>
+                        new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0))
                     }
                 />
                 <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "12px" }} />
