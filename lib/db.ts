@@ -180,114 +180,46 @@ async function getUserCollections() {
   };
 }
 
-async function getCollection<T>(
+async function getQuery(
   name: "accounts" | "categories" | "budgets" | "transactions",
-  mapper: (id: string, data: Record<string, unknown>) => T,
+  args?: { where?: WhereFilter; orderBy?: { [key: string]: "asc" | "desc" } },
 ) {
-  const collections = await getUserCollections();
-  const snapshot = await collections[name].get();
-  return snapshot.docs.map((doc) => mapper(doc.id, doc.data()));
-}
+  const { [name]: collection } = await getUserCollections();
+  let query: any = collection;
 
-async function ensureSeedData() {
-  const { userId, root, accounts, categories } = await getUserCollections();
-  if (seededUsers.has(userId)) return;
-
-  const existing = seedPromises.get(userId);
-  if (existing) {
-    await existing;
-    return;
+  if (args?.where) {
+    for (const [key, value] of Object.entries(args.where)) {
+      if (value && typeof value === "object" && ("gte" in value || "lte" in value)) {
+        const range = value as WhereDate;
+        if (range.gte) query = query.where(key, ">=", range.gte);
+        if (range.lte) query = query.where(key, "<=", range.lte);
+      } else {
+        query = query.where(key, "==", value);
+      }
+    }
   }
 
-  const seedPromise = (async () => {
-    const [categoriesSnap, accountsSnap] = await Promise.all([categories.limit(1).get(), accounts.limit(1).get()]);
-    const now = new Date();
-
-    if (categoriesSnap.empty) {
-      const batch = firestore.batch();
-      for (const category of expenseCategories) {
-        batch.set(categories.doc(), { ...category, type: "EXPENSE", createdAt: now });
-      }
-      for (const category of incomeCategories) {
-        batch.set(categories.doc(), { ...category, type: "INCOME", createdAt: now });
-      }
-      await batch.commit();
+  if (args?.orderBy) {
+    for (const [field, direction] of Object.entries(args.orderBy)) {
+      query = query.orderBy(field, direction);
     }
-
-    if (accountsSnap.empty) {
-      await accounts.add({
-        name: "Carteira",
-        type: "CASH",
-        color: "#00d98b",
-        balance: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    await root.set(
-      {
-        updatedAt: now,
-      },
-      { merge: true },
-    );
-
-    seededUsers.add(userId);
-  })();
-
-  seedPromises.set(userId, seedPromise);
-  try {
-    await seedPromise;
-  } finally {
-    seedPromises.delete(userId);
   }
-}
 
-async function getAccountsCollection() {
-  await ensureSeedData();
-  return sortByField(await getCollection("accounts", toAccount), { createdAt: "asc" });
-}
-
-async function getCategoriesCollection() {
-  await ensureSeedData();
-  return getCollection("categories", toCategory);
-}
-
-async function getTransactionsCollection() {
-  await ensureSeedData();
-  return getCollection("transactions", toTransaction);
-}
-
-async function getBudgetsCollection() {
-  await ensureSeedData();
-  return getCollection("budgets", toBudget);
-}
-
-async function getExportSnapshot() {
-  const [accounts, categories, budgets, transactions] = await Promise.all([
-    getAccountsCollection(),
-    getCategoriesCollection(),
-    getBudgetsCollection(),
-    getTransactionsCollection(),
-  ]);
-
-  return {
-    exportedAt: new Date().toISOString(),
-    accounts,
-    categories,
-    budgets,
-    transactions,
-  };
+  return query;
 }
 
 export const db: any = {
   account: {
     async findMany(args?: { select?: { balance: true }; orderBy?: { createdAt: "asc" | "desc" } }) {
-      const accounts = await getAccountsCollection();
+      await ensureSeedData();
+      const query = await getQuery("accounts", { orderBy: args?.orderBy });
+      const snapshot = await query.get();
+      const accounts = snapshot.docs.map((doc: any) => toAccount(doc.id, doc.data()));
+
       if (args?.select?.balance) {
-        return accounts.map((account) => ({ balance: account.balance }));
+        return accounts.map((account: any) => ({ balance: account.balance }));
       }
-      return args?.orderBy ? sortByField(accounts, args.orderBy) : accounts;
+      return accounts;
     },
     async create({ data }: { data: Record<string, unknown> }) {
       const { accounts } = await getUserCollections();
@@ -309,20 +241,19 @@ export const db: any = {
     },
     async delete({ where }: { where: { id: string } }) {
       const { accounts, transactions } = await getUserCollections();
-      const txs = await getTransactionsCollection();
+      const snapshot = await transactions.where("accountId", "==", where.id).get();
       const batch = firestore.batch();
-      for (const tx of txs.filter((item) => item.accountId === where.id)) {
-        batch.delete(transactions.doc(tx.id));
-      }
+      snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       batch.delete(accounts.doc(where.id));
       await batch.commit();
     },
   },
   category: {
     async findMany(args?: { where?: WhereFilter; orderBy?: { name: "asc" | "desc" } }) {
-      const categories = await getCategoriesCollection();
-      const filtered = categories.filter((category) => matchesWhere(category as Record<string, unknown>, args?.where));
-      return args?.orderBy ? sortByField(filtered, args.orderBy) : filtered;
+      await ensureSeedData();
+      const query = await getQuery("categories", args);
+      const snapshot = await query.get();
+      return snapshot.docs.map((doc: any) => toCategory(doc.id, doc.data()));
     },
     async create({ data }: { data: Record<string, unknown> }) {
       const { categories } = await getUserCollections();
@@ -335,29 +266,33 @@ export const db: any = {
       await categories.doc(where.id).update(data);
     },
     async delete({ where }: { where: { id: string } }) {
-      const { budgets, categories } = await getUserCollections();
-      const [allBudgets, transactions] = await Promise.all([getBudgetsCollection(), getTransactionsCollection()]);
-      if (transactions.some((tx) => tx.categoryId === where.id)) {
+      const { budgets, categories, transactions } = await getUserCollections();
+      const txCheck = await transactions.where("categoryId", "==", where.id).limit(1).get();
+      
+      if (!txCheck.empty) {
         throw new Error("Categoria em uso por transacoes.");
       }
 
+      const budgetSnapshot = await budgets.where("categoryId", "==", where.id).get();
       const batch = firestore.batch();
-      for (const budget of allBudgets.filter((item) => item.categoryId === where.id)) {
-        batch.delete(budgets.doc(budget.id));
-      }
+      budgetSnapshot.docs.forEach((doc) => batch.delete(doc.ref));
       batch.delete(categories.doc(where.id));
       await batch.commit();
     },
   },
   budget: {
     async findMany(args?: { where?: WhereFilter; include?: { category: true } }) {
-      const budgets = (await getBudgetsCollection()).filter((budget) =>
-        matchesWhere(budget as Record<string, unknown>, args?.where),
-      );
+      await ensureSeedData();
+      const query = await getQuery("budgets", { where: args?.where });
+      const snapshot = await query.get();
+      const budgets = snapshot.docs.map((doc: any) => toBudget(doc.id, doc.data()));
+
       if (!args?.include?.category) return budgets;
 
-      const categories = await getCategoriesCollection();
-      const categoryMap = new Map(categories.map((category) => [category.id, category]));
+      const { categories: categoriesColl } = await getUserCollections();
+      const categoriesSnap = await categoriesColl.get();
+      const categoryMap = new Map(categoriesSnap.docs.map((doc) => [doc.id, toCategory(doc.id, doc.data())]));
+      
       return budgets.map((budget) => ({
         ...budget,
         category: categoryMap.get(budget.categoryId),
@@ -373,15 +308,15 @@ export const db: any = {
       create: Record<string, unknown>;
     }) {
       const { budgets } = await getUserCollections();
-      const existing = (await getBudgetsCollection()).find(
-        (budget) =>
-          budget.categoryId === where.categoryId_month_year.categoryId &&
-          budget.month === where.categoryId_month_year.month &&
-          budget.year === where.categoryId_month_year.year,
-      );
+      const snapshot = await budgets
+        .where("categoryId", "==", where.categoryId_month_year.categoryId)
+        .where("month", "==", where.categoryId_month_year.month)
+        .where("year", "==", where.categoryId_month_year.year)
+        .limit(1)
+        .get();
 
-      if (existing) {
-        await budgets.doc(existing.id).update(update);
+      if (!snapshot.empty) {
+        await snapshot.docs[0].ref.update(update);
         return;
       }
 
@@ -398,17 +333,20 @@ export const db: any = {
       include?: { account: true; category: true } | { category: true };
       orderBy?: { date: "asc" | "desc" };
     }) {
-      const transactions = (await getTransactionsCollection()).filter((transaction) =>
-        matchesWhere(transaction as Record<string, unknown>, args?.where),
-      );
-      const ordered = args?.orderBy ? sortByField(transactions, args.orderBy) : transactions;
-      if (!args?.include) return ordered;
+      await ensureSeedData();
+      const query = await getQuery("transactions", args);
+      const snapshot = await query.get();
+      const transactions = snapshot.docs.map((doc: any) => toTransaction(doc.id, doc.data()));
 
-      const [accounts, categories] = await Promise.all([getAccountsCollection(), getCategoriesCollection()]);
-      const accountMap = new Map(accounts.map((account) => [account.id, account]));
-      const categoryMap = new Map(categories.map((category) => [category.id, category]));
+      if (!args?.include) return transactions;
 
-      return ordered.map((transaction) => ({
+      const { accounts: accountsColl, categories: categoriesColl } = await getUserCollections();
+      const [accountsSnap, categoriesSnap] = await Promise.all([accountsColl.get(), categoriesColl.get()]);
+      
+      const accountMap = new Map(accountsSnap.docs.map((doc) => [doc.id, toAccount(doc.id, doc.data())]));
+      const categoryMap = new Map(categoriesSnap.docs.map((doc) => [doc.id, toCategory(doc.id, doc.data())]));
+
+      return transactions.map((transaction) => ({
         ...transaction,
         ...(args.include && "account" in args.include ? { account: accountMap.get(transaction.accountId) } : {}),
         category: categoryMap.get(transaction.categoryId),
@@ -435,9 +373,11 @@ export const db: any = {
       await transactions.doc(where.id).delete();
     },
     async groupBy({ where }: { by: string[]; where?: WhereFilter; _sum: { amount: true } }) {
-      const transactions = (await getTransactionsCollection()).filter((transaction) =>
-        matchesWhere(transaction as Record<string, unknown>, where),
-      );
+      await ensureSeedData();
+      const query = await getQuery("transactions", { where });
+      const snapshot = await query.get();
+      const transactions = snapshot.docs.map((doc: any) => toTransaction(doc.id, doc.data()));
+      
       const totals = new Map<string, number>();
       for (const transaction of transactions) {
         totals.set(transaction.categoryId, (totals.get(transaction.categoryId) ?? 0) + Number(transaction.amount));
