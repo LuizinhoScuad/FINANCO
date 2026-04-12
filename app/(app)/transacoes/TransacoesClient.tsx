@@ -284,9 +284,30 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                 {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
                                                 {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
                                                 {tx.receiptUrl ? (
-                                                    <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", textDecoration: "none" }}>
-                                                        🧾 recibo
-                                                    </a>
+                                                    <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                                                        <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", textDecoration: "none" }}>
+                                                            🧾 recibo
+                                                        </a>
+                                                        <a
+                                                            href={tx.receiptUrl}
+                                                            download
+                                                            onClick={async (e) => {
+                                                                e.preventDefault();
+                                                                const res = await fetch(tx.receiptUrl!);
+                                                                const blob = await res.blob();
+                                                                const url = URL.createObjectURL(blob);
+                                                                const a = document.createElement("a");
+                                                                a.href = url;
+                                                                a.download = `recibo-${tx.id}.${blob.type.split("/")[1] || "jpg"}`;
+                                                                a.click();
+                                                                URL.revokeObjectURL(url);
+                                                            }}
+                                                            style={{ color: "var(--color-muted)", textDecoration: "none", fontSize: "0.75rem" }}
+                                                            title="Baixar recibo"
+                                                        >
+                                                            ↓
+                                                        </a>
+                                                    </span>
                                                 ) : (
                                                     <button
                                                         type="button"
