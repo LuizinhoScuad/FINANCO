@@ -19,11 +19,13 @@ Execute em sequência:
 ```bash
 git add .
 git commit -m "<mensagem descritiva das alterações>"
-git push origin master
+git push origin main
 ```
 
 ### 4. Deploy no Firebase App Hosting
-Execute `/deploy-scripts` para disparar o deploy no Firebase App Hosting.
+Execute `/deploy-financo` para disparar o deploy no Firebase App Hosting.
+
+> **Projeto:** `financo-260308` | **Branch:** `main` | **URL:** `https://financo--financo-260308.us-central1.hosted.app`
 
 ---
 
