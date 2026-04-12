@@ -14,6 +14,31 @@
 
 ## Sessões
 
+### 2026-04-12 — Configuração de Deploy Automático (Firebase App Hosting)
+
+**Horário de registro:** 12/04/2026 às 19:30
+
+**O que foi feito:**
+- Criado `firebase.json` com referência ao `firestore.indexes.json`
+- Criado `.firebaserc` apontando para o projeto `financo-260308`
+- Criado skill `/deploy-financo` em `~/.claude/skills/deploy-financo/` — executa push direto sem confirmações
+- `CLAUDE.md` atualizado: branch corrigida para `main`, deploy atualizado para `/deploy-financo`, removida exigência de confirmações intermediárias
+
+**Arquivos criados/modificados:**
+- `firebase.json` *(novo)*
+- `.firebaserc` *(novo)*
+- `CLAUDE.md` *(alterado)*
+
+**Pendências / próximos passos:**
+- Nenhuma
+
+**Observações para debugging:**
+- O App Hosting monitora a branch `main` — qualquer `git push` dispara build automático, sem necessidade de `firebase deploy`
+- URL de produção: `https://financo--financo-260308.us-central1.hosted.app`
+- Painel: `https://console.firebase.google.com/project/financo-260308/apphosting`
+
+---
+
 ### 2026-04-12 — OCR de Recibos, Parcelamento, BottomNav Mobile e Migração Firestore
 
 **Horário de registro:** 12/04/2026 às 19:00
