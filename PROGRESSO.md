@@ -14,6 +14,31 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix deploy lento: arquivos grandes no git + otimização de build
+
+**Horário de registro:** 12/04/2026 às 14:26
+
+**O que foi feito:**
+- Diagnosticado deploy lento: `RECIBO.jpeg` (174KB) estava sendo rastreado pelo git desde o commit `4811482`, engordo o repositório e tornando o clone do Firebase mais lento
+- `tmp_test_db.js` (arquivo de teste local) também estava rastreado desnecessariamente
+- Ambos removidos do git tracking via `git rm --cached`
+- `.gitignore` atualizado para bloquear `RECIBO.*` e `tmp_*.js` futuramente
+- `next.config.ts` criado com `output: "standalone"` para reduzir o artefato de deploy
+- `serverComponentsExternalPackages: ["tesseract.js"]` adicionado para evitar processamento do WASM pesado no build server-side
+- Investigados 4 erros no Firebase (3x 4xx + 1x 5xx): 4xx são erros normais de auth, 5xx pontual provavelmente causado pelo tesseract.js no SSR — corrigido pelo config acima
+- Deploy confirmado como bem-sucedido pelo usuário
+
+**Arquivos criados/modificados:**
+- `.gitignore` *(alterado)* — ignora `RECIBO.*` e `tmp_*.js`
+- `next.config.ts` *(alterado)* — `output: standalone` + `serverComponentsExternalPackages`
+- `RECIBO.jpeg` *(removido do git)*
+- `tmp_test_db.js` *(removido do git)*
+
+**Pendências:**
+- Nenhuma
+
+---
+
 ### 2026-04-12 — Fix: race condition no recibo + botão vincular recibo a transação existente
 
 **Horário de registro:** 12/04/2026 às 13:26
