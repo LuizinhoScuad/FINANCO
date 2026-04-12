@@ -14,6 +14,27 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix: erro auth/invalid-credential no login
+
+**Horário de registro:** 12/04/2026 às 11:35
+
+**O que foi feito:**
+- Identificado que o erro `Firebase: Error (auth/invalid-credential)` exibido no login vinha do `adminAuth.createSessionCookie()` falhando em produção — e não do `signInWithEmailAndPassword`
+- Causa raiz: `apphosting.yaml` não tinha `FIREBASE_CLIENT_EMAIL` nem `FIREBASE_PRIVATE_KEY`, então o Firebase Admin SDK ficava sem credenciais no ambiente de produção (Firebase App Hosting)
+- O erro estava oculto antes do commit `fec7bba` que passou a expor a mensagem real do erro em vez de "Falha ao iniciar sessao."
+- Secrets criados no Secret Manager do Firebase: `firebase-client-email` e `firebase-private-key`
+- `apphosting.yaml` atualizado para referenciar os secrets
+- `LoginClient.tsx` refatorado com dois blocos `try/catch` separados: um para o sign-in do Firebase Auth (cliente), outro para a criação do session cookie (servidor) — erros agora são distinguíveis e mais informativos
+
+**Arquivos criados/modificados:**
+- `app/login/LoginClient.tsx` *(alterado)* — separação do try/catch de sign-in e de sessão
+- `apphosting.yaml` *(alterado)* — adicionados `FIREBASE_CLIENT_EMAIL` e `FIREBASE_PRIVATE_KEY` como secrets
+
+**Pendências / próximos passos:**
+- Verificar login no ambiente de produção após o deploy
+
+---
+
 ### 2026-04-12 — Fix: OCR mobile em loop infinito
 
 **Horário de registro:** 12/04/2026 às 11:15
