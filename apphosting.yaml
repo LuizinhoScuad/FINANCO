@@ -13,7 +13,3 @@ env:
     value: "64024920706"
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: 1:64024920706:web:41e3cc4b3f3a0a562caa9b
-  - variable: FIREBASE_CLIENT_EMAIL
-    secret: firebase-client-email
-  - variable: FIREBASE_PRIVATE_KEY
-    secret: firebase-private-key
