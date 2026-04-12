@@ -39,6 +39,13 @@ firebase-debug.log*
 *.db
 *.db-journal
 
+# arquivos temporários e testes locais
+tmp_*.js
+tmp_*.ts
+
+# imagens de teste / recibos locais
+RECIBO.*
+
 # vercel
 .vercel
 
