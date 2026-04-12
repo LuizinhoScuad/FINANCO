@@ -14,6 +14,21 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix: OCR travado em "Enviando recibo..." no mobile (2ª ocorrência)
+
+**Horário de registro:** 12/04/2026 às 12:02
+
+**O que foi feito:**
+- O loop infinito no OCR voltou a ocorrer — desta vez o travamento era no **upload** (`uploadBytes`), não no OCR
+- A correção anterior (commit `181d6c1`) adicionou timeout apenas no Tesseract, mas o `uploadReceipt` não tinha nenhum timeout
+- Em conexões móveis lentas, `uploadBytes` do Firebase Storage pode travar indefinidamente, mantendo `ocrLoading=true` para sempre
+- Solução: `Promise.race` com timeout de 15s no upload; se falhar ou demorar, o fluxo segue normalmente para o OCR sem a URL do recibo
+
+**Arquivos criados/modificados:**
+- `app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — timeout de 15s no `uploadReceipt`, falha silenciosa sem bloquear o OCR
+
+---
+
 ### 2026-04-12 — Fix: login restaurado (senha + credenciais Admin SDK)
 
 **Horário de registro:** 12/04/2026 às 11:55

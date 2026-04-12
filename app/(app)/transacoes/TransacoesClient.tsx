@@ -47,18 +47,19 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
         setReceiptPreview(URL.createObjectURL(file));
         if (cameraRef.current) cameraRef.current.value = "";
 
-        // 1. Upload primeiro — independente do OCR
+        // 1. Upload com timeout de 15s — falha silenciosa, OCR continua sem URL
         let url = "";
         try {
             const { uploadReceipt } = await import("@/lib/firebase-storage");
-            url = await uploadReceipt(file);
+            const uploadTimeout = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("timeout")), 15000)
+            );
+            url = await Promise.race([uploadReceipt(file), uploadTimeout]);
             setReceiptUrl(url);
-            setOcrStatus("Lendo recibo...");
         } catch {
-            setOcrStatus("Falha no envio. Preencha manualmente.");
-            setOcrLoading(false);
-            return;
+            // Upload falhou ou demorou demais — segue sem salvar o recibo
         }
+        setOcrStatus("Lendo recibo...");
 
         // 2. OCR com timeout de 20s — opcional, falha silenciosa
         try {
