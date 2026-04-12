@@ -30,6 +30,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const [txType, setTxType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
     const [repeat, setRepeat] = useState(false);
     const [ocrLoading, setOcrLoading] = useState(false);
+    const [ocrStatus, setOcrStatus] = useState("");
     const [ocrDesc, setOcrDesc] = useState("");
     const [ocrAmount, setOcrAmount] = useState("");
     const [ocrDate, setOcrDate] = useState(new Date().toISOString().split("T")[0]);
@@ -40,31 +41,53 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     async function handleOCR(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
+
         setOcrLoading(true);
+        setOcrStatus("Enviando recibo...");
         setReceiptPreview(URL.createObjectURL(file));
+        if (cameraRef.current) cameraRef.current.value = "";
+
+        // 1. Upload primeiro — independente do OCR
+        let url = "";
+        try {
+            const { uploadReceipt } = await import("@/lib/firebase-storage");
+            url = await uploadReceipt(file);
+            setReceiptUrl(url);
+            setOcrStatus("Lendo recibo...");
+        } catch {
+            setOcrStatus("Falha no envio. Preencha manualmente.");
+            setOcrLoading(false);
+            return;
+        }
+
+        // 2. OCR com timeout de 20s — opcional, falha silenciosa
         try {
             const { createWorker } = await import("tesseract.js");
-            const { uploadReceipt } = await import("@/lib/firebase-storage");
 
-            const [{ data: { text } }, url] = await Promise.all([
-                createWorker("por").then(async (worker) => {
-                    const result = await worker.recognize(file);
-                    await worker.terminate();
-                    return result;
-                }),
-                uploadReceipt(file),
-            ]);
+            const ocr = createWorker("por").then(async (worker) => {
+                const result = await worker.recognize(file);
+                await worker.terminate();
+                return result.data.text;
+            });
 
-            setReceiptUrl(url);
-            const valor = text.match(/R\$\s*([\d.,]+)/)?.[1]?.replace(".", "").replace(",", ".");
-            const data = text.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1];
-            const descricao = text.split("\n").find((l) => l.trim().length > 5) ?? "";
-            if (valor) setOcrAmount(valor);
-            if (data) setOcrDate(toInputDate(data));
-            if (descricao) setOcrDesc(descricao.trim().slice(0, 60));
+            const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 20000));
+            const text = await Promise.race([ocr, timeout]);
+
+            if (text) {
+                const valor = text.match(/R\$\s*([\d.,]+)/)?.[1]?.replace(".", "").replace(",", ".");
+                const data = text.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1];
+                const descricao = text.split("\n").find((l) => l.trim().length > 5) ?? "";
+                if (valor) setOcrAmount(valor);
+                if (data) setOcrDate(toInputDate(data));
+                if (descricao) setOcrDesc(descricao.trim().slice(0, 60));
+                setOcrStatus("✓ Recibo lido");
+            } else {
+                setOcrStatus("✓ Recibo salvo — preencha os campos manualmente");
+            }
+        } catch {
+            setOcrStatus("✓ Recibo salvo — preencha os campos manualmente");
         } finally {
             setOcrLoading(false);
-            if (cameraRef.current) cameraRef.current.value = "";
         }
     }
 
@@ -93,6 +116,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                 setOcrDate(new Date().toISOString().split("T")[0]);
                 setReceiptUrl("");
                 setReceiptPreview("");
+                setOcrStatus("");
                 router.refresh();
             }
         });
@@ -328,7 +352,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                     disabled={ocrLoading}
                                     style={{ width: "100%", fontSize: "0.85rem", borderStyle: "dashed", color: ocrLoading ? "var(--color-muted)" : "var(--color-accent)", borderColor: "var(--color-accent)" }}
                                 >
-                                    {ocrLoading ? "⏳ Lendo recibo..." : "📷 Escanear Recibo (OCR)"}
+                                    {ocrLoading ? `⏳ ${ocrStatus}` : "📷 Escanear Recibo (OCR)"}
                                 </button>
 
                                 {/* Preview da imagem + campo hidden com URL */}
@@ -342,7 +366,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                             />
                                         </a>
                                         <span style={{ fontSize: "0.75rem", color: receiptUrl ? "var(--color-accent)" : "var(--color-muted)" }}>
-                                            {receiptUrl ? "✓ Recibo salvo" : "⏳ Enviando..."}
+                                            {ocrStatus || (receiptUrl ? "✓ Recibo salvo" : "⏳ Enviando...")}
                                         </span>
                                         <input type="hidden" name="receiptUrl" value={receiptUrl} />
                                     </div>
