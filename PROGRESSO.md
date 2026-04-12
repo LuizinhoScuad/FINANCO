@@ -14,6 +14,20 @@
 
 ## Sessões
 
+### 2026-04-12 — Recibo visível na lista de transações (mobile)
+
+**Horário de registro:** 12/04/2026 às 12:39
+
+**O que foi feito:**
+- Link do recibo (🧾) estava na última coluna da tabela — invisível no mobile por scroll horizontal
+- Movido para dentro da linha de descrição (junto com @payee e #tags), sempre visível
+- Removido o link duplicado da última coluna
+
+**Arquivos criados/modificados:**
+- `app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — 🧾 recibo agora aparece abaixo da descrição, alinhado com payee/tags
+
+---
+
 ### 2026-04-12 — Fix: receiptUrl inválida bloqueia save + melhora extração OCR
 
 **Horário de registro:** 12/04/2026 às 12:14

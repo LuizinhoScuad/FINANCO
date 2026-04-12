@@ -257,10 +257,15 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                 </span>
                                             )}
                                         </div>
-                                        {(tx.payee || tx.tags) && (
-                                            <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem" }}>
+                                        {(tx.payee || tx.tags || tx.receiptUrl) && (
+                                            <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                                                 {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
                                                 {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
+                                                {tx.receiptUrl && (
+                                                    <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", textDecoration: "none" }}>
+                                                        🧾 recibo
+                                                    </a>
+                                                )}
                                             </div>
                                         )}
                                     </td>
@@ -273,17 +278,6 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                         {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
                                     </td>
                                     <td style={{ padding: "0.75rem 1rem" }}>
-                                        {tx.receiptUrl && (
-                                            <a
-                                                href={tx.receiptUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                title="Ver recibo"
-                                                style={{ fontSize: "1rem", textDecoration: "none", marginRight: "0.5rem" }}
-                                            >
-                                                🧾
-                                            </a>
-                                        )}
                                         <button
                                             className="btn btn-danger"
                                             onClick={() => handleDelete(tx.id)}
