@@ -14,7 +14,17 @@
       "Bash(xargs -r taskkill /PID /F)",
       "Bash(ls /c/Sistemas/financo/.env*)",
       "Bash(node -e \"require\\('firebase/storage'\\); console.log\\('ok'\\)\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Skill(deploy-scripts)",
+      "Skill(deploy-scripts:*)",
+      "Bash(firebase projects:list)",
+      "Bash(firebase apphosting:backends:list --project financo-260308)",
+      "Edit(~/.claude/skills/deploy-financo/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Luiz\\.claude\\skills"
     ]
   }
 }

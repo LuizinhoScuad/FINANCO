@@ -14,6 +14,33 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix: OCR mobile em loop infinito
+
+**Horário de registro:** 12/04/2026 às 11:15
+
+**O que foi feito:**
+- Corrigido bug crítico de loop infinito no OCR ao usar câmera no mobile
+- Upload e OCR eram executados em `Promise.all` — se o Tesseract travasse, o `finally` nunca rodava e `ocrLoading` ficava `true` para sempre
+- Nova lógica: upload primeiro (independente), OCR depois com timeout de 20s
+- Se OCR falhar ou timeout, recibo ainda é salvo e usuário preenche campos manualmente
+- Feedback em tempo real no botão: "Enviando recibo..." → "Lendo recibo..." → resultado
+- Adicionado estado `ocrStatus` para mensagens progressivas durante o processo
+
+**Arquivos criados/modificados:**
+- `app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — OCR separado do upload, timeout 20s, fallback gracioso
+
+**Pendências / próximos passos:**
+- Edição de transações (atualmente só cria e exclui)
+- Tela de configurações / exportação de dados
+- Notificações de contas a vencer (PENDING transactions)
+
+**Observações para debugging:**
+- Tesseract.js carrega modelo PT (~15MB) em runtime — no mobile pode demorar ou falhar silenciosamente
+- O timeout de 20s garante que o usuário não fique travado esperando indefinidamente
+- O upload para Firebase Storage sempre ocorre antes do OCR, garantindo que o recibo seja salvo mesmo sem leitura
+
+---
+
 ### 2026-04-12 — Ajustes no CLAUDE.md e fluxo de finalização de sessão
 
 **Horário de registro:** 12/04/2026 às 11:02
