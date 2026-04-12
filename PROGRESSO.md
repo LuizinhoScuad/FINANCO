@@ -14,7 +14,30 @@
 
 ## Sessões
 
-### 2026-04-12 — Fix: erro auth/invalid-credential no login
+### 2026-04-12 — Fix: login restaurado (senha + credenciais Admin SDK)
+
+**Horário de registro:** 12/04/2026 às 11:55
+
+**O que foi feito:**
+- Investigado erro `Firebase: Error (auth/invalid-credential)` no login
+- Separação do `try/catch` em `LoginClient.tsx` revelou que havia dois problemas distintos:
+  1. **Senha incorreta** para o usuário `luizking@uol.com.br` — resolvido enviando email de redefinição via REST API do Firebase Identity Toolkit
+  2. **Credenciais do Admin SDK inválidas em produção** — o `apphosting.yaml` não tinha `FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY` e quando foram adicionados como secrets, a chave privada foi rejeitada com `invalid_grant: account not found`
+- Solução definitiva para o Admin SDK: em produção (Firebase App Hosting), `FIREBASE_CONFIG` é setado automaticamente e o ambiente já provê Application Default Credentials (ADC) com permissões suficientes para `createSessionCookie` — não precisa de service account explícito
+- `firebase-admin.ts` refatorado: usa ADC quando `FIREBASE_CONFIG` presente (produção), cert credentials apenas localmente
+- Login confirmado funcionando no mobile após redefinição de senha
+
+**Arquivos criados/modificados:**
+- `app/login/LoginClient.tsx` *(alterado)* — dois blocos `try/catch` separados: sign-in e sessão
+- `lib/firebase-admin.ts` *(alterado)* — ADC em produção, cert local
+- `apphosting.yaml` *(alterado)* — removidos secrets desnecessários do Admin SDK
+
+**Pendências / próximos passos:**
+- Nenhuma
+
+---
+
+### 2026-04-12 — Fix: erro auth/invalid-credential no login (iteração anterior)
 
 **Horário de registro:** 12/04/2026 às 11:35
 
