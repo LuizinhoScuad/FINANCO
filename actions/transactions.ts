@@ -18,10 +18,7 @@ const TransactionSchema = z.object({
     notes: z.string().optional().nullable(),
     isInstallment: z.coerce.boolean().default(false),
     totalInstallments: z.coerce.number().min(1).optional().nullable(),
-    receiptUrl: z.preprocess(
-        (v) => (v === "" ? undefined : v),
-        z.string().url().optional().nullable()
-    ),
+    receiptUrl: z.string().url().optional().nullable(),
 });
 
 export async function getTransactions(month?: number, year?: number, type?: string, categoryId?: string) {
@@ -42,8 +39,8 @@ export async function getTransactions(month?: number, year?: number, type?: stri
 
 export async function createTransaction(formData: FormData) {
     const raw = Object.fromEntries(formData);
-    // Convert checkbox to boolean for zod
     if (raw.isInstallment === "on") raw.isInstallment = "true";
+    if (raw.receiptUrl === "") delete raw.receiptUrl;
 
     const parsed = TransactionSchema.safeParse(raw);
     if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
@@ -102,6 +99,7 @@ export async function updateTransaction(id: string, formData: FormData) {
     if (!existing) return { error: "Transação não encontrada" };
 
     const raw = Object.fromEntries(formData);
+    if (raw.receiptUrl === "") delete raw.receiptUrl;
     const parsed = TransactionSchema.safeParse(raw);
     if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
