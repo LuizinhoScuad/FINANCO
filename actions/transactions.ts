@@ -18,6 +18,7 @@ const TransactionSchema = z.object({
     notes: z.string().optional().nullable(),
     isInstallment: z.coerce.boolean().default(false),
     totalInstallments: z.coerce.number().min(1).optional().nullable(),
+    receiptUrl: z.string().url().optional().nullable(),
 });
 
 export async function getTransactions(month?: number, year?: number, type?: string, categoryId?: string) {
@@ -53,7 +54,7 @@ export async function createTransaction(formData: FormData) {
             const installmentDate = new Date(baseDate);
             installmentDate.setMonth(baseDate.getMonth() + (i - 1));
 
-            const tx = await db.transaction.create({
+            await db.transaction.create({
                 data: {
                     ...rest,
                     amount,
@@ -76,7 +77,7 @@ export async function createTransaction(formData: FormData) {
         }
     } else {
         // Single transaction
-        const tx = await db.transaction.create({
+        await db.transaction.create({
             data: { ...rest, amount, date: baseDate, isInstallment: false },
         });
 
@@ -210,6 +211,23 @@ export async function toggleTransactionStatus(id: string) {
 
 export async function getExpensesByCategory(month: number, year: number) {
     const { start, end } = getMonthRange(month, year);
+    const txs = await db.transaction.findMany({
+        where: { type: "EXPENSE", date: { gte: start, lte: end } },
+        include: { category: true },
+    });
+
+    const map = new Map<string, { name: string; color: string; total: number }>();
+    for (const tx of txs) {
+        const existing = map.get(tx.categoryId) ?? { name: tx.category.name, color: tx.category.color, total: 0 };
+        existing.total += Number(tx.amount);
+        map.set(tx.categoryId, existing);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
+
+export async function getExpensesByCategoryYear(year: number) {
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31, 23, 59, 59);
     const txs = await db.transaction.findMany({
         where: { type: "EXPENSE", date: { gte: start, lte: end } },
         include: { category: true },

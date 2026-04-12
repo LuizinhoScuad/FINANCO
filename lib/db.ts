@@ -180,6 +180,41 @@ async function getUserCollections() {
   };
 }
 
+async function ensureSeedData() {
+  const userId = await requireCurrentUserId();
+  if (seededUsers.has(userId)) return;
+  if (seedPromises.has(userId)) return seedPromises.get(userId);
+  const promise = (async () => {
+    const { categories, accounts } = await getUserCollections();
+    const [catSnap, accSnap] = await Promise.all([categories.limit(1).get(), accounts.limit(1).get()]);
+    if (!catSnap.empty && !accSnap.empty) { seededUsers.add(userId); return; }
+    const batch = firestore.batch();
+    const now = new Date();
+    if (catSnap.empty) {
+      for (const c of expenseCategories) batch.set(categories.doc(), { ...c, type: "EXPENSE", createdAt: now });
+      for (const c of incomeCategories) batch.set(categories.doc(), { ...c, type: "INCOME", createdAt: now });
+    }
+    if (accSnap.empty) {
+      batch.set(accounts.doc(), { name: "Conta Corrente", type: "CHECKING", color: "#00d98b", balance: 0, createdAt: now, updatedAt: now });
+    }
+    await batch.commit();
+    seededUsers.add(userId);
+  })();
+  seedPromises.set(userId, promise);
+  return promise;
+}
+
+async function getExportSnapshot() {
+  const { accounts, categories, transactions, budgets } = await getUserCollections();
+  const [a, c, t, b] = await Promise.all([accounts.get(), categories.get(), transactions.get(), budgets.get()]);
+  return {
+    accounts: a.docs.map((d: any) => toAccount(d.id, d.data())),
+    categories: c.docs.map((d: any) => toCategory(d.id, d.data())),
+    transactions: t.docs.map((d: any) => toTransaction(d.id, d.data())),
+    budgets: b.docs.map((d: any) => toBudget(d.id, d.data())),
+  };
+}
+
 async function getQuery(
   name: "accounts" | "categories" | "budgets" | "transactions",
   args?: { where?: WhereFilter; orderBy?: { [key: string]: "asc" | "desc" } },

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls c:/Sistemas/financo/*.png c:/Sistemas/financo/*.PNG)",
+      "Read(//c/Sistemas/**)",
+      "Read(//c/Users/Luiz/**)",
+      "Bash(npm run:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -r taskkill /PID /F)",
+      "Bash(ls /c/Sistemas/financo/.env*)",
+      "Bash(node -e \"require\\('firebase/storage'\\); console.log\\('ok'\\)\")",
+      "Bash(git add:*)"
+    ]
+  }
+}

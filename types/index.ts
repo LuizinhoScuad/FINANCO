@@ -36,6 +36,7 @@ export interface Transaction {
     installment: number | null;
     totalInstallments: number | null;
     notes: string | null;
+    receiptUrl: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

@@ -22,8 +22,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Falha ao iniciar sessao." }, { status: 401 });
+  } catch (err) {
+    console.error("[session] erro:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 401 });
   }
 }
 

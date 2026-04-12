@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createTransaction, deleteTransaction, toggleTransactionStatus } from "@/actions/transactions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/types";
+
+function toInputDate(br: string) {
+    const [d, m, y] = br.split("/");
+    return `${y}-${m}-${d}`;
+}
 
 
 type TxWithRels = Transaction & { account: Account; category: Category };
@@ -17,8 +22,6 @@ type Props = {
     year: number;
 };
 
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
 export function TransacoesClient({ transactions, categories, accounts, month, year }: Props) {
     const router = useRouter();
     const [showForm, setShowForm] = useState(false);
@@ -26,6 +29,44 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const [filterType, setFilterType] = useState("all");
     const [txType, setTxType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
     const [repeat, setRepeat] = useState(false);
+    const [ocrLoading, setOcrLoading] = useState(false);
+    const [ocrDesc, setOcrDesc] = useState("");
+    const [ocrAmount, setOcrAmount] = useState("");
+    const [ocrDate, setOcrDate] = useState(new Date().toISOString().split("T")[0]);
+    const [receiptUrl, setReceiptUrl] = useState("");
+    const [receiptPreview, setReceiptPreview] = useState("");
+    const cameraRef = useRef<HTMLInputElement>(null);
+
+    async function handleOCR(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setOcrLoading(true);
+        setReceiptPreview(URL.createObjectURL(file));
+        try {
+            const { createWorker } = await import("tesseract.js");
+            const { uploadReceipt } = await import("@/lib/firebase-storage");
+
+            const [{ data: { text } }, url] = await Promise.all([
+                createWorker("por").then(async (worker) => {
+                    const result = await worker.recognize(file);
+                    await worker.terminate();
+                    return result;
+                }),
+                uploadReceipt(file),
+            ]);
+
+            setReceiptUrl(url);
+            const valor = text.match(/R\$\s*([\d.,]+)/)?.[1]?.replace(".", "").replace(",", ".");
+            const data = text.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1];
+            const descricao = text.split("\n").find((l) => l.trim().length > 5) ?? "";
+            if (valor) setOcrAmount(valor);
+            if (data) setOcrDate(toInputDate(data));
+            if (descricao) setOcrDesc(descricao.trim().slice(0, 60));
+        } finally {
+            setOcrLoading(false);
+            if (cameraRef.current) cameraRef.current.value = "";
+        }
+    }
 
     function handleMonthChange(delta: number) {
         let m = month + delta;
@@ -47,6 +88,11 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             } else {
                 setShowForm(false);
                 setRepeat(false);
+                setOcrDesc("");
+                setOcrAmount("");
+                setOcrDate(new Date().toISOString().split("T")[0]);
+                setReceiptUrl("");
+                setReceiptPreview("");
                 router.refresh();
             }
         });
@@ -184,6 +230,17 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                         {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
                                     </td>
                                     <td style={{ padding: "0.75rem 1rem" }}>
+                                        {tx.receiptUrl && (
+                                            <a
+                                                href={tx.receiptUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                title="Ver recibo"
+                                                style={{ fontSize: "1rem", textDecoration: "none", marginRight: "0.5rem" }}
+                                            >
+                                                🧾
+                                            </a>
+                                        )}
                                         <button
                                             className="btn btn-danger"
                                             onClick={() => handleDelete(tx.id)}
@@ -247,20 +304,76 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                         name="date"
                                         type="date"
                                         className="input-base"
-                                        defaultValue={new Date().toISOString().split("T")[0]}
+                                        value={ocrDate}
+                                        onChange={(e) => setOcrDate(e.target.value)}
                                         required
                                     />
                                 </div>
                             </div>
 
+                            {/* Botão OCR */}
+                            <div>
+                                <input
+                                    ref={cameraRef}
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    style={{ display: "none" }}
+                                    onChange={handleOCR}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={() => cameraRef.current?.click()}
+                                    disabled={ocrLoading}
+                                    style={{ width: "100%", fontSize: "0.85rem", borderStyle: "dashed", color: ocrLoading ? "var(--color-muted)" : "var(--color-accent)", borderColor: "var(--color-accent)" }}
+                                >
+                                    {ocrLoading ? "⏳ Lendo recibo..." : "📷 Escanear Recibo (OCR)"}
+                                </button>
+
+                                {/* Preview da imagem + campo hidden com URL */}
+                                {receiptPreview && (
+                                    <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                        <a href={receiptUrl || receiptPreview} target="_blank" rel="noopener noreferrer">
+                                            <img
+                                                src={receiptPreview}
+                                                alt="Recibo"
+                                                style={{ width: "64px", height: "64px", objectFit: "cover", borderRadius: "4px", border: "1px solid var(--color-border)" }}
+                                            />
+                                        </a>
+                                        <span style={{ fontSize: "0.75rem", color: receiptUrl ? "var(--color-accent)" : "var(--color-muted)" }}>
+                                            {receiptUrl ? "✓ Recibo salvo" : "⏳ Enviando..."}
+                                        </span>
+                                        <input type="hidden" name="receiptUrl" value={receiptUrl} />
+                                    </div>
+                                )}
+                            </div>
+
                             <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label className="label-sm">Descrição</label>
-                                    <input name="description" className="input-base" placeholder="Ex: Aluguel" required />
+                                    <input
+                                        name="description"
+                                        className="input-base"
+                                        placeholder="Ex: Aluguel"
+                                        value={ocrDesc}
+                                        onChange={(e) => setOcrDesc(e.target.value)}
+                                        required
+                                    />
                                 </div>
                                 <div>
                                     <label className="label-sm">Valor (R$)</label>
-                                    <input name="amount" type="number" step="0.01" min="0.01" className="input-base" placeholder="0,00" required />
+                                    <input
+                                        name="amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        className="input-base"
+                                        placeholder="0,00"
+                                        value={ocrAmount}
+                                        onChange={(e) => setOcrAmount(e.target.value)}
+                                        required
+                                    />
                                 </div>
                             </div>
 
