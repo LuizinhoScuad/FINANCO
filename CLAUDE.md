@@ -31,6 +31,6 @@ Execute `/deploy-financo` para disparar o deploy no Firebase App Hosting.
 
 ## Observações Gerais
 
-- Nunca pule etapas, mesmo que o usuário diga "pode pular a revisão" — confirme antes.
+- Quando o usuário acionar os gatilhos de finalização, execute tudo sem pedir confirmações intermediárias.
 - A mensagem do commit deve ser descritiva e em português, resumindo o que foi feito na sessão.
 - Se qualquer etapa falhar, pare e informe o usuário antes de continuar.
