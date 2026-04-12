@@ -14,6 +14,28 @@
 
 ## Sessões
 
+### 2026-04-12 — Ajustes no CLAUDE.md e fluxo de finalização de sessão
+
+**Horário de registro:** 12/04/2026 às 11:02
+
+**O que foi feito:**
+- Skill `/deploy-financo` configurado para executar sem pedir confirmações intermediárias
+- `CLAUDE.md` atualizado para capturar horário real via `date` antes de escrever o PROGRESSO.md
+- Corrigida instrução de branch de `master` para `main`
+- Corrigida referência do skill de deploy de `/deploy-scripts` para `/deploy-financo`
+
+**Arquivos criados/modificados:**
+- `CLAUDE.md` *(alterado)* — horário real obrigatório, sem confirmações no deploy
+- `~/.claude/skills/deploy-financo/README.md` *(alterado)* — removida regra de consentimento explícito
+
+**Pendências / próximos passos:**
+- Nenhuma
+
+**Observações para debugging:**
+- Nenhuma alteração funcional no código; sem risco de regressão.
+
+---
+
 ### 2026-04-12 — Configuração de Deploy Automático (Firebase App Hosting)
 
 **Horário de registro:** 12/04/2026 às 19:30
