@@ -49,17 +49,21 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
         setReceiptPreview(URL.createObjectURL(file));
         if (cameraRef.current) cameraRef.current.value = "";
 
-        // 1. Upload com timeout de 15s — falha silenciosa, OCR continua sem URL
+        // 1. Upload com timeout de 30s
         let url = "";
         try {
             const { uploadReceipt } = await import("@/lib/firebase-storage");
             const uploadTimeout = new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("timeout")), 15000)
+                setTimeout(() => reject(new Error("timeout")), 30000)
             );
             url = await Promise.race([uploadReceipt(file), uploadTimeout]);
             setReceiptUrl(url);
-        } catch {
-            // Upload falhou ou demorou demais — segue sem salvar o recibo
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[uploadReceipt] falhou:", msg);
+            setOcrStatus(`⚠️ Recibo não salvo: ${msg}`);
+            setOcrLoading(false);
+            return;
         }
         setOcrStatus("Lendo recibo...");
 
@@ -378,7 +382,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                 style={{ width: "64px", height: "64px", objectFit: "cover", borderRadius: "4px", border: "1px solid var(--color-border)" }}
                                             />
                                         </a>
-                                        <span style={{ fontSize: "0.75rem", color: receiptUrl ? "var(--color-accent)" : "var(--color-muted)" }}>
+                                        <span style={{ fontSize: "0.75rem", color: ocrStatus.startsWith("⚠️") ? "var(--color-danger)" : receiptUrl ? "var(--color-accent)" : "var(--color-muted)" }}>
                                             {ocrStatus || (receiptUrl ? "✓ Recibo salvo" : "⏳ Enviando...")}
                                         </span>
                                         <input type="hidden" name="receiptUrl" value={receiptUrl} />

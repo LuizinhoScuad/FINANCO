@@ -14,6 +14,26 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix: upload de recibo não era salvo na transação
+
+**Horário de registro:** 12/04/2026 às 13:08
+
+**O que foi feito:**
+- Diagnosticado via simulação real de upload: o bucket do Firebase Storage nunca havia sido ativado no console — todo upload retornava 404 silenciosamente
+- O `catch {}` engolia o erro, o usuário via o thumbnail local mas `receiptUrl` ficava vazio
+- Firebase Storage ativado pelo usuário no console do Firebase
+- `firebase-storage.ts`: adicionado `waitForAuth()` — aguarda até 5s pelo estado de autenticação antes de tentar o upload (corrige race condition no mobile)
+- `TransacoesClient.tsx`: catch agora exibe erro visível em vermelho (`⚠️ Recibo não salvo: <motivo>`), timeout aumentado de 15s para 30s, retorno antecipado em caso de falha
+
+**Arquivos criados/modificados:**
+- `lib/firebase-storage.ts` *(alterado)* — `waitForAuth()` + upload corrigido
+- `app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — erro visível, timeout 30s
+
+**Pendências:**
+- Transações existentes (ex: Pecorino/Estacionamento) foram criadas sem recibo — não há retroativo automático
+
+---
+
 ### 2026-04-12 — Recibo visível na lista de transações (mobile)
 
 **Horário de registro:** 12/04/2026 às 12:39
