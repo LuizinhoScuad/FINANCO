@@ -230,7 +230,8 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                         Nenhuma transação encontrada.
                     </p>
                 ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ backgroundColor: "var(--color-surface-2)", borderBottom: "1px solid var(--color-border)" }}>
                                 {["Status", "Descrição / Favorecido", "Categoria", "Conta", "Data", "Valor", ""].map((h) => (
@@ -342,6 +343,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 )}
             </div>
 
