@@ -8,8 +8,14 @@ Quando o usuário disser **"salva tudo"**, **"grava tudo"**, **"finaliza"**, **"
 Execute `/code-reviewer` para revisar todo o código alterado na sessão atual.
 
 ### 2. Atualizar PROGRESSO.md
+Antes de escrever, capture o horário real do sistema:
+```bash
+date
+```
+Use o resultado para preencher o campo **Horário de registro** no formato `DD/MM/YYYY às HH:MM`.
+
 Atualize o arquivo `PROGRESSO.md` na raiz do projeto com um resumo da sessão:
-- Data e hora
+- Data e hora (obtida do comando acima — nunca escreva horário de cabeça)
 - O que foi implementado / alterado
 - Arquivos modificados
 - Pendências ou próximos passos (se houver)
