@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createTransaction, deleteTransaction, toggleTransactionStatus } from "@/actions/transactions";
+import { createTransaction, deleteTransaction, toggleTransactionStatus, attachReceipt } from "@/actions/transactions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/types";
 
@@ -39,6 +39,8 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const [receiptUrl, setReceiptUrl] = useState("");
     const [receiptPreview, setReceiptPreview] = useState("");
     const cameraRef = useRef<HTMLInputElement>(null);
+    const attachRef = useRef<HTMLInputElement>(null);
+    const [attachingId, setAttachingId] = useState<string | null>(null);
 
     async function handleOCR(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -111,6 +113,23 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             setOcrStatus("✓ Recibo salvo — preencha os campos manualmente");
         } finally {
             setOcrLoading(false);
+        }
+    }
+
+    async function handleAttachReceipt(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file || !attachingId) return;
+        if (attachRef.current) attachRef.current.value = "";
+
+        try {
+            const { uploadReceipt } = await import("@/lib/firebase-storage");
+            const url = await uploadReceipt(file);
+            await attachReceipt(attachingId, url);
+            router.refresh();
+        } catch (err) {
+            alert("Erro ao vincular recibo: " + (err instanceof Error ? err.message : String(err)));
+        } finally {
+            setAttachingId(null);
         }
     }
 
@@ -281,7 +300,18 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                     <td style={{ padding: "0.75rem 1rem", fontWeight: 700, fontFamily: "var(--font-display)", color: tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}>
                                         {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
                                     </td>
-                                    <td style={{ padding: "0.75rem 1rem" }}>
+                                    <td style={{ padding: "0.75rem 1rem", display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                                        {!tx.receiptUrl && (
+                                            <button
+                                                type="button"
+                                                title="Vincular recibo"
+                                                disabled={attachingId === tx.id}
+                                                onClick={() => { setAttachingId(tx.id); attachRef.current?.click(); }}
+                                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", background: "none", border: "1px solid var(--color-border)", borderRadius: "4px", cursor: "pointer", color: attachingId === tx.id ? "var(--color-muted)" : "var(--color-accent)", opacity: attachingId === tx.id ? 0.6 : 1 }}
+                                            >
+                                                {attachingId === tx.id ? "⏳" : "📎"}
+                                            </button>
+                                        )}
                                         <button
                                             className="btn btn-danger"
                                             onClick={() => handleDelete(tx.id)}
@@ -297,6 +327,16 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                     </table>
                 )}
             </div>
+
+            {/* Input oculto global para vincular recibo a transação existente */}
+            <input
+                ref={attachRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: "none" }}
+                onChange={handleAttachReceipt}
+            />
 
             {/* Modal Form */}
             {showForm && (
@@ -490,8 +530,8 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
 
                             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary" disabled={isPending}>
-                                    {isPending ? "Salvando..." : "Finalizar Lançamento"}
+                                <button type="submit" className="btn btn-primary" disabled={isPending || ocrLoading}>
+                                    {isPending ? "Salvando..." : ocrLoading ? "⏳ Aguarde o recibo..." : "Finalizar Lançamento"}
                                 </button>
                             </div>
                         </form>

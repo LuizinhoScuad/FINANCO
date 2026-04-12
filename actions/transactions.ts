@@ -127,6 +127,12 @@ export async function updateTransaction(id: string, formData: FormData) {
     return { success: true };
 }
 
+export async function attachReceipt(id: string, url: string) {
+    await db.transaction.update({ where: { id }, data: { receiptUrl: url } });
+    revalidatePath("/");
+    return { success: true };
+}
+
 export async function deleteTransaction(id: string) {
     const tx = await db.transaction.findUnique({ where: { id } });
     if (!tx) return { error: "Transação não encontrada" };

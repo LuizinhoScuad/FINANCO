@@ -14,6 +14,25 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix: race condition no recibo + botão vincular recibo a transação existente
+
+**Horário de registro:** 12/04/2026 às 13:26
+
+**O que foi feito:**
+- Diagnosticado race condition: upload do recibo no celular demorava e o usuário salvava a transação antes de terminar, deixando o arquivo órfão no Storage sem `receiptUrl` no Firestore
+- Fix: botão "Finalizar Lançamento" agora desabilitado enquanto `ocrLoading=true`, com texto "⏳ Aguarde o recibo..."
+- Nova feature: botão [📎] em cada linha da lista (apenas para transações sem recibo) que abre câmera/galeria, faz upload e vincula o recibo à transação via nova action `attachReceipt`
+- Fix de bug detectado na revisão: input oculto do attachRef estava dentro do modal condicional `{showForm && ...}` — movido para o nível global do componente para funcionar mesmo com o form fechado
+
+**Arquivos criados/modificados:**
+- `actions/transactions.ts` *(alterado)* — nova action `attachReceipt(id, url)` para vincular recibo a transação existente
+- `app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — botão [📎] por linha, `handleAttachReceipt`, fix do submit bloqueado durante upload
+
+**Pendências:**
+- Os 2 arquivos órfãos em `receipts/test-simulation/` no Storage podem ser deletados manualmente pelo console do Firebase
+
+---
+
 ### 2026-04-12 — Fix: upload de recibo não era salvo na transação
 
 **Horário de registro:** 12/04/2026 às 13:08
