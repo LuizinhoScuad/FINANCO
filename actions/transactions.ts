@@ -18,7 +18,10 @@ const TransactionSchema = z.object({
     notes: z.string().optional().nullable(),
     isInstallment: z.coerce.boolean().default(false),
     totalInstallments: z.coerce.number().min(1).optional().nullable(),
-    receiptUrl: z.string().url().optional().nullable(),
+    receiptUrl: z.preprocess(
+        (v) => (v === "" ? undefined : v),
+        z.string().url().optional().nullable()
+    ),
 });
 
 export async function getTransactions(month?: number, year?: number, type?: string, categoryId?: string) {

@@ -14,6 +14,23 @@
 
 ## Sessões
 
+### 2026-04-12 — Fix: receiptUrl inválida bloqueia save + melhora extração OCR
+
+**Horário de registro:** 12/04/2026 às 12:14
+
+**O que foi feito:**
+- Erro `{"receiptUrl":["Invalid URL"]}` impedia salvar qualquer transação quando recibo tinha sido escaneado mas upload falhou/expirou — a string vazia `""` era rejeitada pelo Zod `.url()`
+- Solução: `z.preprocess` converte `""` para `undefined` antes da validação no schema
+- OCR lia o texto mas não preenchia os campos — regex muito restrita (exigia `R$` e `DD/MM/YYYY` exatos)
+- Melhorias nos regex: captura `TOTAL`, `VALOR`, `PAGO`, `PAGAR`; datas com `-` e formato ISO `YYYY-MM-DD`; descrição agora exige pelo menos uma letra (ignora linhas só com números)
+- `toInputDate` corrigida para aceitar formato `YYYY/MM/DD` além de `DD/MM/YYYY`
+
+**Arquivos criados/modificados:**
+- `actions/transactions.ts` *(alterado)* — `z.preprocess` em `receiptUrl` para tratar string vazia como undefined
+- `app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — regex OCR expandidos, `toInputDate` para dois formatos
+
+---
+
 ### 2026-04-12 — Fix: OCR travado em "Enviando recibo..." no mobile (2ª ocorrência)
 
 **Horário de registro:** 12/04/2026 às 12:02

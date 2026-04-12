@@ -7,8 +7,10 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/types";
 
 function toInputDate(br: string) {
-    const [d, m, y] = br.split("/");
-    return `${y}-${m}-${d}`;
+    const parts = br.split("/");
+    if (parts[0].length === 4) return `${parts[0]}-${parts[1]}-${parts[2]}`; // YYYY/MM/DD
+    const [d, m, y] = parts;
+    return `${y}-${m}-${d}`; // DD/MM/YYYY
 }
 
 
@@ -75,12 +77,28 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             const text = await Promise.race([ocr, timeout]);
 
             if (text) {
-                const valor = text.match(/R\$\s*([\d.,]+)/)?.[1]?.replace(".", "").replace(",", ".");
-                const data = text.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1];
-                const descricao = text.split("\n").find((l) => l.trim().length > 5) ?? "";
+                // Valor: "R$ 1.234,56" | "1.234,56" | "TOTAL 12,50" | "VALOR: 99,90"
+                const valorMatch =
+                    text.match(/R\$\s*([\d.,]+)/i)?.[1] ??
+                    text.match(/(?:TOTAL|VALOR|PAGO|PAGAR)[^\d]*([\d.,]+)/i)?.[1] ??
+                    text.match(/(?:^|\s)([\d]{1,3}(?:\.\d{3})*,\d{2})(?:\s|$)/m)?.[1];
+                const valor = valorMatch?.replace(/\./g, "").replace(",", ".");
+
+                // Data: "10/04/2026" | "10-04-2026" | "2026-04-10"
+                const dataMatch =
+                    text.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/)?.[1] ??
+                    text.match(/(\d{4}[\/\-]\d{2}[\/\-]\d{2})/)?.[1];
+                const data = dataMatch?.replace(/-/g, "/");
+
+                // Descrição: primeira linha não-vazia com mais de 3 chars, sem ser só números
+                const descricao =
+                    text.split("\n")
+                        .map((l) => l.trim())
+                        .find((l) => l.length > 3 && /[a-zA-ZÀ-ú]/.test(l)) ?? "";
+
                 if (valor) setOcrAmount(valor);
                 if (data) setOcrDate(toInputDate(data));
-                if (descricao) setOcrDesc(descricao.trim().slice(0, 60));
+                if (descricao) setOcrDesc(descricao.slice(0, 60));
                 setOcrStatus("✓ Recibo lido");
             } else {
                 setOcrStatus("✓ Recibo salvo — preencha os campos manualmente");
