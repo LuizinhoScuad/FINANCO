@@ -280,8 +280,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                 </span>
                                             )}
                                         </div>
-                                        {(tx.payee || tx.tags || tx.receiptUrl || !tx.receiptUrl) && (
-                                            <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                                        <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                                                 {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
                                                 {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
                                                 {tx.receiptUrl ? (
@@ -293,13 +292,12 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                         type="button"
                                                         disabled={attachingId === tx.id}
                                                         onClick={() => { setAttachingId(tx.id); attachRef.current?.click(); }}
-                                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: attachingId === tx.id ? "var(--color-muted)" : "var(--color-border)", fontSize: "0.7rem" }}
+                                                        style={{ background: "none", border: "1px dashed var(--color-muted)", borderRadius: "3px", padding: "1px 6px", cursor: "pointer", color: "var(--color-muted)", fontSize: "0.65rem", lineHeight: 1.4 }}
                                                     >
-                                                        {attachingId === tx.id ? "⏳ enviando..." : "📎 recibo"}
+                                                        {attachingId === tx.id ? "enviando..." : "+ recibo"}
                                                     </button>
                                                 )}
                                             </div>
-                                        )}
                                     </td>
                                     <td style={{ padding: "0.75rem 1rem", color: "var(--color-muted)" }}>
                                         {tx.category.icon} {tx.category.name}
