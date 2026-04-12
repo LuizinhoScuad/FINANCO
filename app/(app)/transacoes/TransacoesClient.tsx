@@ -280,14 +280,23 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                 </span>
                                             )}
                                         </div>
-                                        {(tx.payee || tx.tags || tx.receiptUrl) && (
+                                        {(tx.payee || tx.tags || tx.receiptUrl || !tx.receiptUrl) && (
                                             <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                                                 {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
                                                 {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
-                                                {tx.receiptUrl && (
+                                                {tx.receiptUrl ? (
                                                     <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", textDecoration: "none" }}>
                                                         🧾 recibo
                                                     </a>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        disabled={attachingId === tx.id}
+                                                        onClick={() => { setAttachingId(tx.id); attachRef.current?.click(); }}
+                                                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: attachingId === tx.id ? "var(--color-muted)" : "var(--color-border)", fontSize: "0.7rem" }}
+                                                    >
+                                                        {attachingId === tx.id ? "⏳ enviando..." : "📎 recibo"}
+                                                    </button>
                                                 )}
                                             </div>
                                         )}
@@ -300,18 +309,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                     <td style={{ padding: "0.75rem 1rem", fontWeight: 700, fontFamily: "var(--font-display)", color: tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}>
                                         {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
                                     </td>
-                                    <td style={{ padding: "0.75rem 1rem", display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                                        {!tx.receiptUrl && (
-                                            <button
-                                                type="button"
-                                                title="Vincular recibo"
-                                                disabled={attachingId === tx.id}
-                                                onClick={() => { setAttachingId(tx.id); attachRef.current?.click(); }}
-                                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", background: "none", border: "1px solid var(--color-border)", borderRadius: "4px", cursor: "pointer", color: attachingId === tx.id ? "var(--color-muted)" : "var(--color-accent)", opacity: attachingId === tx.id ? 0.6 : 1 }}
-                                            >
-                                                {attachingId === tx.id ? "⏳" : "📎"}
-                                            </button>
-                                        )}
+                                    <td style={{ padding: "0.75rem 1rem" }}>
                                         <button
                                             className="btn btn-danger"
                                             onClick={() => handleDelete(tx.id)}
