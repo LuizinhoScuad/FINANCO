@@ -43,20 +43,13 @@ export function LoginClient() {
       } else {
         await signInWithEmailAndPassword(firebaseAuth, email, password);
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha no login.";
-      setError(message);
-      setLoading(false);
-      return;
-    }
 
-    try {
       await startSession();
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao iniciar sessao.";
-      setError("Erro na sessão: " + message);
+      const message = err instanceof Error ? err.message : "Falha no login.";
+      setError(message);
     } finally {
       setLoading(false);
     }

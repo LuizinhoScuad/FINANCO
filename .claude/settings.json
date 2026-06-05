@@ -50,7 +50,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/transacoes)",
       "Bash(ls c:/Sistemas/financo/.env*)",
       "Bash(node test-ui.mjs)",
-      "Read(//c/tmp/**)"
+      "Read(//c/tmp/**)",
+      "Bash(sort -k5 -rh)",
+      "Bash(xargs -I{} sh -c 'echo $\\(wc -c < \"{}\"\\) {}')",
+      "Bash(git rm:*)",
+      "Bash(xargs cat:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Luiz\\.claude\\skills"

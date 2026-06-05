@@ -1,10 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  output: "standalone",
-  experimental: {
-    serverComponentsExternalPackages: ["tesseract.js"],
-  },
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

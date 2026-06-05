@@ -7,11 +7,11 @@ type Entry = { name: string; color: string; total: number };
 
 const FALLBACK_COLORS = ["#00d98b", "#ff4d6d", "#f59e0b", "#60a5fa", "#a78bfa", "#34d399"];
 
-export function CategoryPieChart({ data, emptyMessage = "Sem despesas este mês" }: { data: Entry[]; emptyMessage?: string }) {
+export function CategoryPieChart({ data }: { data: Entry[] }) {
     if (data.length === 0) {
         return (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 220, color: "var(--color-muted)", fontSize: "0.875rem" }}>
-                {emptyMessage}
+                Sem despesas este mês
             </div>
         );
     }
