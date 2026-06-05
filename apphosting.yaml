@@ -2,7 +2,7 @@ env:
   - variable: NEXT_PUBLIC_APP_URL
     value: https://financo--financo-260308.us-central1.hosted.app
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: AIzaSyCfxjyt-fZnXC0ueCk6BmR4jnRt-_s9Qv0
+    secret: FIREBASE_API_KEY
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: financo-260308.firebaseapp.com
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
