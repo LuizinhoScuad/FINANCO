@@ -1,6 +1,23 @@
-// Tipos locais compatíveis com os modelos Prisma
 export type TxType = "INCOME" | "EXPENSE";
 export type AccountType = "CASH" | "BANK" | "SAVINGS" | "INVESTMENT";
+
+export type UserRole = "ADMIN" | "COLABORADOR";
+export type UserStatus = "PENDING" | "ACTIVE" | "BLOCKED";
+
+/** Perfil em users/{uid}. A fonte da verdade sobre quem é quem. */
+export interface UserProfile {
+    uid: string;
+    name: string;
+    email: string | null;
+    role: UserRole;
+    status: UserStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    approvedBy: string | null;
+    approvedAt: Date | null;
+    /** Último acesso, vindo do Firebase Auth — não fica gravado no documento. */
+    lastSignInAt: Date | null;
+}
 
 export interface Account {
     id: string;

@@ -6,13 +6,15 @@ import { SessionControls } from "@/components/layout/SessionControls";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: "◧" },
-  { href: "/transacoes", label: "Transacoes", icon: "⇄" },
+  { href: "/transacoes", label: "Transações", icon: "⇄" },
   { href: "/contas", label: "Contas", icon: "▦" },
   { href: "/categorias", label: "Categorias", icon: "⌘" },
-  { href: "/orcamentos", label: "Orcamentos", icon: "◎" },
+  { href: "/orcamentos", label: "Orçamentos", icon: "◎" },
 ];
 
-export function Sidebar() {
+const linksAdmin = [{ href: "/admin/usuarios", label: "Usuários", icon: "◉" }];
+
+export function Sidebar({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean; pendentes?: number }) {
   const pathname = usePathname();
 
   return (
@@ -85,6 +87,64 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Administração — a visibilidade é conveniência; quem barra de fato é
+            o requireAdmin() no servidor (Art. 5). */}
+        {isAdmin && (
+          <>
+            <div
+              style={{
+                margin: "1rem 0.75rem 0.5rem",
+                fontSize: "0.65rem",
+                color: "var(--color-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+              }}
+            >
+              Administração
+            </div>
+            {linksAdmin.map(({ href, label, icon }) => {
+              const active = pathname === href || pathname.startsWith(href + "/");
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.625rem",
+                    padding: "0.5rem 0.75rem",
+                    borderRadius: "2px",
+                    fontSize: "0.875rem",
+                    fontWeight: active ? 600 : 400,
+                    color: active ? "var(--color-accent)" : "var(--color-muted)",
+                    backgroundColor: active ? "var(--color-accent-dim)" : "transparent",
+                    textDecoration: "none",
+                    borderLeft: active ? "2px solid var(--color-accent)" : "2px solid transparent",
+                  }}
+                >
+                  <span>{icon}</span>
+                  {label}
+                  {pendentes > 0 && (
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        backgroundColor: "#ffc107",
+                        color: "#0a0e1a",
+                        borderRadius: "10px",
+                        padding: "0 6px",
+                        fontSize: "0.65rem",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {pendentes}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       <div

@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase-client";
+import { registrarCadastro } from "@/actions/signup";
 
 type Mode = "login" | "register";
 
@@ -46,6 +47,7 @@ async function startSession() {
 export function LoginClient({ aviso }: { aviso?: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,11 +60,23 @@ export function LoginClient({ aviso }: { aviso?: string }) {
 
     try {
       if (mode === "register") {
-        await createUserWithEmailAndPassword(firebaseAuth, email, password);
-      } else {
-        await signInWithEmailAndPassword(firebaseAuth, email, password);
+        // Cadastro NÃO entra: cria a conta como pendente e vai para a espera.
+        const credencial = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        const idToken = await credencial.user.getIdToken(true);
+
+        const registro = await registrarCadastro({ idToken, name: nome });
+        await signOut(firebaseAuth).catch(() => {});
+
+        if (!registro.ok) {
+          setError(registro.error);
+          return;
+        }
+
+        router.push("/aguardando");
+        return;
       }
 
+      await signInWithEmailAndPassword(firebaseAuth, email, password);
       await startSession();
       router.push("/dashboard");
       router.refresh();
@@ -105,12 +119,32 @@ export function LoginClient({ aviso }: { aviso?: string }) {
           <h1 style={{ fontSize: "1.2rem" }}>{mode === "login" ? "Entrar" : "Criar conta"}</h1>
           <p style={{ color: "var(--color-muted)", fontSize: "0.9rem" }}>
             {mode === "login"
-              ? "Acesse seus dados financeiros com email e senha."
-              : "Crie um usuario para separar seus dados por conta."}
+              ? "Acesse com seu e-mail e senha."
+              : "Crie sua conta. Ela precisa ser liberada por um administrador antes do primeiro acesso."}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+          {mode === "register" && (
+            <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.9rem" }}>
+              Nome completo
+              <input
+                type="text"
+                value={nome}
+                onChange={(event) => setNome(event.target.value)}
+                required
+                minLength={2}
+                placeholder="Como você aparece para o gestor"
+                style={{
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "2px",
+                  padding: "0.75rem",
+                  backgroundColor: "var(--color-surface-2)",
+                }}
+              />
+            </label>
+          )}
+
           <label style={{ display: "flex", flexDirection: "column", gap: "0.35rem", fontSize: "0.9rem" }}>
             Email
             <input

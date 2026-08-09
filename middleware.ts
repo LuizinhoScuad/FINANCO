@@ -24,5 +24,12 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   // Só as áreas autenticadas. Fora daqui: login, tela de espera, api e estáticos.
-  matcher: ["/dashboard/:path*", "/transacoes/:path*", "/contas/:path*", "/categorias/:path*", "/orcamentos/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/transacoes/:path*",
+    "/contas/:path*",
+    "/categorias/:path*",
+    "/orcamentos/:path*",
+    "/admin/:path*",
+  ],
 };

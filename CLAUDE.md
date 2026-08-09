@@ -46,7 +46,7 @@ date
 ```
 Use o resultado para preencher o campo **Horário de registro** no formato `DD/MM/YYYY às HH:MM`.
 
-Atualize o arquivo `PROGRESSO.md` na raiz do projeto com um resumo da sessão:
+Atualize o arquivo `docs/PROGRESSO.md` com um resumo da sessão:
 - Data e hora (obtida do comando acima — nunca escreva horário de cabeça)
 - O que foi implementado / alterado
 - Arquivos modificados

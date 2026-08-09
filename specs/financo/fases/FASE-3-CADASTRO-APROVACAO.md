@@ -3,12 +3,39 @@ programa: financo
 tipo: fase
 fase: 3
 titulo: Cadastro com aprovação e painel de usuários
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [2]
 herda: ../../00-CONSTITUTION.md
 ---
 
 # FASE 3 — Cadastro com aprovação e painel de usuários
+
+> ## ✅ Concluída em 2026-08-09
+>
+> **Verificado com sessões reais de cada papel**, não por inspeção: admin abre o
+> painel (200); colaborador é desviado para o painel comum (307 → /dashboard);
+> colaborador usa o app normalmente (200); sem sessão não chega ao painel
+> (307 → /login).
+>
+> **Decisões tomadas na execução:**
+> - `revokeRefreshTokens` ao bloquear — sem isso o cookie de 5 dias já emitido
+>   continuaria valendo.
+> - Ordem de escrita em `definirPapelEStatus`: primeiro os claims (o que barra
+>   de fato), depois o documento. Se a segunda falhar, sobra um painel
+>   desatualizado — chato, mas seguro. O inverso deixaria alguém com acesso real
+>   e aparência de bloqueado.
+> - `listarUsuarios` parte do Firebase Auth, não do Firestore: conta criada com
+>   o cadastro interrompido no meio continua visível ao administrador em vez de
+>   sumir do painel.
+> - Travas contra trancar a porta com a chave dentro: ninguém bloqueia ou
+>   rebaixa a si mesmo, e o último administrador ativo não pode ser removido.
+> - No celular, com área administrativa, o menu inferior mostra 4 telas em vez
+>   de 5, para os alvos de toque não encolherem.
+>
+> **Corrigido durante a execução:** `/admin` faltava no `matcher` do middleware.
+>
+> Commit: `Fase 3 (SDD): cadastro com aprovação e painel de usuários`
 
 **Objetivo:** a equipe entra pela porta da frente — cada pessoa se cadastra, e
 só o Luiz decide quem passa. Atende RF-01 a RF-04.

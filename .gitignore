@@ -31,9 +31,9 @@ yarn-error.log*
 .pnpm-debug.log*
 firebase-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — o .env real nunca; o modelo sim, para quem clonar saber configurar
 .env*
-.env.example
+!.env.example
 
 # local databases
 *.db
