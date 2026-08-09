@@ -307,7 +307,12 @@ export function DespesasClient({
             />
           </div>
 
-          <div style={{ display: "flex", gap: "0.75rem" }}>
+          {/* Barra de ação fixa acima do menu inferior.
+              Sem isto, ao rolar o formulário o botão de enviar podia parar
+              debaixo do menu: o toque acertava o link "Despesas" e o que havia
+              sido digitado se perdia. Medido no iPhone 14 Pro — o botão ficava
+              25px sob o menu. */}
+          <div className="acoes">
             <button type="button" className="btn btn-ghost" onClick={() => { limparFormulario(); setAba("lista"); }} style={{ flex: 1, justifyContent: "center" }}>
               Cancelar
             </button>
@@ -322,6 +327,21 @@ export function DespesasClient({
               color: var(--color-muted);
               display: block;
               margin-bottom: 0.375rem;
+            }
+            .acoes {
+              display: flex;
+              gap: 0.75rem;
+            }
+            @media (max-width: 767px) {
+              .acoes {
+                position: sticky;
+                bottom: calc(64px + env(safe-area-inset-bottom) + 0.5rem);
+                z-index: 10;
+                background-color: var(--color-surface);
+                padding: 0.75rem 0 0.25rem;
+                margin-top: 0.25rem;
+                box-shadow: 0 -12px 16px -8px var(--color-surface);
+              }
             }
           `}</style>
         </form>
