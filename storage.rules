@@ -1,0 +1,83 @@
+rules_version = '2';
+
+// ============================================================================
+// FINANCO — Regras do Storage (fotos de recibo)
+//
+// AQUI O CLIENTE ESCREVE DE VERDADE: o upload do recibo acontece no navegador
+// (lib/firebase-storage.ts → uploadBytes). Logo, esta regra é a ÚNICA barreira
+// real entre a foto de um colaborador e o resto do mundo.
+//
+// O QUE ESTAVA AQUI ANTES (substituído em 2026-08-09):
+//   allow read, write: if request.time < timestamp.date(2026, 5, 12);
+//
+// Era a regra temporária que o Firebase cria sozinho ao ativar o Storage.
+// Duas consequências, ambas ruins:
+//   1. Até 12/05/2026 QUALQUER PESSOA na internet, sem login nenhum, podia ler,
+//      gravar e apagar todos os recibos.
+//   2. Depois de 12/05/2026 a condição virou falsa e passou a negar TUDO — o
+//      envio de recibos estava quebrado havia quase três meses sem ninguém ver.
+//
+// Referência: specs/00-CONSTITUTION.md — Art. 4 (LGPD) e Art. 5 (autorização).
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ---- auxiliares -------------------------------------------------------
+
+    function estaLogado() {
+      return request.auth != null;
+    }
+
+    // Papel e status vêm dos custom claims, gravados pelo servidor.
+    // Quem se cadastra sozinho NÃO tem esses claims — e por isso não passa
+    // daqui até ser aprovado (o fluxo de aprovação chega na Fase 3).
+    function estaAtivo() {
+      return estaLogado() && request.auth.token.status == 'ACTIVE';
+    }
+
+    function ehAdmin() {
+      return estaLogado() && request.auth.token.role == 'ADMIN';
+    }
+
+    function ehDono(uid) {
+      return estaLogado() && request.auth.uid == uid;
+    }
+
+    function ehImagemValida() {
+      return request.resource.contentType.matches('image/.*')
+          && request.resource.size < 10 * 1024 * 1024;  // 10 MB
+    }
+
+    // ---- recibos ----------------------------------------------------------
+    // Caminho: receipts/{uid}/...  (inclui receipts/{uid}/expenses/... da Fase 6)
+
+    match /receipts/{uid}/{allPaths=**} {
+
+      // Lê: o dono, ou o admin (precisa ver o comprovante para aprovar).
+      allow read: if ehDono(uid) && estaAtivo() || ehAdmin();
+
+      // Grava: só o próprio dono, ativo, e só imagem de até 10 MB.
+      allow create, update: if ehDono(uid) && estaAtivo() && ehImagemValida();
+
+      // Não se apaga comprovante: é lastro de um ressarcimento pago.
+      // Limpeza de arquivo órfão é tarefa administrativa, feita pelo servidor.
+      allow delete: if false;
+    }
+
+    // ---- backups automáticos ----------------------------------------------
+    // Gravados pelo servidor antes de operação destrutiva (Fase 5).
+    // O cliente nunca precisa tocar neles.
+
+    match /backups/{uid}/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // ---- padrão ------------------------------------------------------------
+    // Qualquer outro caminho: negado.
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -2,14 +2,24 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase-client";
 
 type Mode = "login" | "register";
 
+/** Recusa por status da conta — não é erro, é fluxo previsto. */
+class ContaNaoLiberada extends Error {
+  constructor(
+    readonly codigo: "PENDENTE" | "BLOQUEADA",
+    mensagem: string,
+  ) {
+    super(mensagem);
+  }
+}
+
 async function startSession() {
   const user = firebaseAuth.currentUser;
-  if (!user) throw new Error("Usuario nao autenticado.");
+  if (!user) throw new Error("Não foi possível autenticar.");
 
   const idToken = await user.getIdToken(true);
   const response = await fetch("/api/auth/session", {
@@ -19,18 +29,27 @@ async function startSession() {
   });
 
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(payload?.error ?? "Falha ao iniciar sessao.");
+    const payload = (await response.json().catch(() => null)) as
+      | { error?: string; codigo?: "PENDENTE" | "BLOQUEADA" }
+      | null;
+
+    // Sem sessão no servidor, não faz sentido seguir autenticado no navegador.
+    await signOut(firebaseAuth).catch(() => {});
+
+    if (payload?.codigo) {
+      throw new ContaNaoLiberada(payload.codigo, payload.error ?? "Conta não liberada.");
+    }
+    throw new Error(payload?.error ?? "Falha ao iniciar a sessão.");
   }
 }
 
-export function LoginClient() {
+export function LoginClient({ aviso }: { aviso?: string }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(aviso ?? "");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,6 +67,10 @@ export function LoginClient() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
+      if (err instanceof ContaNaoLiberada && err.codigo === "PENDENTE") {
+        router.push("/aguardando");
+        return;
+      }
       const message = err instanceof Error ? err.message : "Falha no login.";
       setError(message);
     } finally {

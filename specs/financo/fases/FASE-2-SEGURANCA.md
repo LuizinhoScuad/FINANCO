@@ -3,12 +3,38 @@ programa: financo
 tipo: fase
 fase: 2
 titulo: Segurança base — regras versionadas, papéis e middleware
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [0, 1]
 herda: ../../00-CONSTITUTION.md
 ---
 
 # FASE 2 — Segurança base
+
+> ## ✅ Concluída em 2026-08-09
+>
+> **Achado grave durante a execução:** as regras do Storage eram a regra
+> temporária padrão do Firebase — `allow read, write: if request.time <
+> timestamp.date(2026, 5, 12)`. Consequências: até 12/05/2026 qualquer pessoa na
+> internet podia ler, gravar e apagar todos os recibos, sem login; depois dessa
+> data a condição virou falsa e o **envio de recibos estava quebrado havia quase
+> três meses** sem ninguém perceber. Publicar `storage.rules` corrigiu os dois
+> problemas de uma vez.
+>
+> **Achado bom:** o Firestore já estava com `allow read, write: if false` e o
+> cliente nunca o acessa (verificado: nenhum import de `firebase/firestore` no
+> código do navegador). Manter a negação total é mais forte que escrever regras
+> permissivas — não há regra para errar. Documentado no próprio arquivo.
+>
+> **Decisão de sequência:** o bootstrap do admin rodou **antes** da publicação
+> das regras, para reduzir a janela sem upload.
+>
+> **Verificado com token real** (não só por inspeção): conta liberada abre sessão
+> (HTTP 200); conta não liberada é barrada (HTTP 403). Token inválido devolve
+> 401, corpo malformado devolve 400 — nada de 500. Rota protegida sem cookie
+> redireciona ao login; `/aguardando` responde sem laço.
+>
+> Commit: `Fase 2 (SDD): segurança base`
 
 **Objetivo:** fechar o perímetro **antes** de qualquer colaborador ser
 convidado. Hoje o cadastro é aberto a qualquer pessoa com o endereço, não existe

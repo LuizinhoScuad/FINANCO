@@ -1,9 +1,10 @@
-import { requireCurrentUser } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-    await requireCurrentUser();
+    // Autenticado E liberado. Pendente vai para /aguardando; bloqueado, ao login.
+    await requireActiveUser();
 
     return (
         <div style={{ display: "flex", minHeight: "100vh" }}>
