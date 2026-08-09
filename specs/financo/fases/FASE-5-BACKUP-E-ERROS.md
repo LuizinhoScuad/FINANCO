@@ -3,12 +3,39 @@ programa: financo
 tipo: fase
 fase: 5
 titulo: Importação segura, exportação paginada e erro visível
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [4]
 herda: ../../00-CONSTITUTION.md
 ---
 
 # FASE 5 — Importação segura e erro visível
+
+> ## ✅ Concluída em 2026-08-09
+>
+> **Verificado com requisições reais contra a rota**, e confirmando ao final que
+> os dados continuavam intactos:
+>
+> | Tentativa | Resultado |
+> |---|---|
+> | Lixo (`{qualquer: "coisa"}`) | ✅ recusado, 400 |
+> | Estrutura certa, conteúdo inválido | ✅ recusado apontando o campo exato |
+> | Lançamento apontando para conta inexistente | ✅ recusado, 422, com a lista de problemas |
+> | Arquivo válido sem confirmação | ✅ devolveu prévia **sem escrever nada** |
+> | Dados após todas as tentativas | ✅ 11 lançamentos intactos |
+>
+> **Cinco barreiras, nesta ordem:** schema → coerência interna → prévia →
+> confirmação → cópia de segurança confirmada → substituição. Se a cópia falhar,
+> a operação aborta: melhor não restaurar do que restaurar sem volta.
+>
+> **Seis chamadas que descartavam o erro** foram corrigidas (Contas, Categorias
+> e Orçamentos). O `Result<T>` da Fase 4 fez o TypeScript apontar cada uma.
+>
+> **Exclusão de conta** passou a mostrar o impacto real antes — saldo e
+> quantidade de lançamentos que somem junto — em vez de um "tem certeza?"
+> genérico (Art. 1).
+>
+> Commit: `Fase 5 (SDD): restauração segura e erro visível`
 
 **Objetivo:** tornar impossível perder dados por restauração de backup, e fazer
 com que nenhuma falha passe despercebida pelo usuário. Atende RF-25 e RNF-09.

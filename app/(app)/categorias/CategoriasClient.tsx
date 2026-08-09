@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createCategory, deleteCategory } from "@/actions/categories";
+import { Aviso } from "@/components/ui/Aviso";
 import type { Category } from "@/types";
 
 const ICONS = ["🏠", "🍔", "🚗", "🏥", "💊", "🎬", "📚", "✈️", "👕", "⚡", "📱", "💰", "🐶", "🏋", "🎮", "🛒", "💼", "🔧", "🎵", "🍺"];
@@ -14,6 +15,8 @@ export function CategoriasClient({ categories }: { categories: Category[] }) {
     const [isPending, startTransition] = useTransition();
     const [selectedIcon, setSelectedIcon] = useState(ICONS[0]);
     const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+    const [erro, setErro] = useState("");
+    const [sucesso, setSucesso] = useState("");
 
     const income = categories.filter((c) => c.type === "INCOME");
     const expense = categories.filter((c) => c.type === "EXPENSE");
@@ -23,23 +26,40 @@ export function CategoriasClient({ categories }: { categories: Category[] }) {
         const fd = new FormData(e.currentTarget);
         fd.set("icon", selectedIcon);
         fd.set("color", selectedColor);
+        setErro("");
         startTransition(async () => {
-            await createCategory(fd);
+            const res = await createCategory(fd);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
             setShowForm(false);
+            setSucesso("Categoria criada.");
             router.refresh();
         });
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm("Excluir esta categoria?")) return;
+    async function handleDelete(id: string, nome: string) {
+        if (!confirm(`Excluir a categoria "${nome}"?`)) return;
+        setErro("");
         startTransition(async () => {
-            await deleteCategory(id);
+            const res = await deleteCategory(id);
+            if (!res.ok) {
+                // "Esta categoria tem lançamentos" aparece aqui. Antes virava
+                // promessa rejeitada sem tratamento e nada acontecia na tela.
+                setErro(res.error);
+                return;
+            }
+            setSucesso(`Categoria "${nome}" excluída.`);
             router.refresh();
         });
     }
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {erro && <Aviso tipo="erro" mensagem={erro} onFechar={() => setErro("")} />}
+            {sucesso && <Aviso tipo="sucesso" mensagem={sucesso} autoFecharMs={3000} onFechar={() => setSucesso("")} />}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div className="animate-fade-up">
                     <h1 style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>Categorias</h1>
@@ -75,7 +95,7 @@ export function CategoriasClient({ categories }: { categories: Category[] }) {
                                 </span>
                                 <button
                                     className="btn btn-danger"
-                                    onClick={() => handleDelete(cat.id)}
+                                    onClick={() => handleDelete(cat.id, cat.name)}
                                     disabled={isPending}
                                     style={{ padding: "0.15rem 0.4rem", fontSize: "0.7rem" }}
                                 >✕</button>

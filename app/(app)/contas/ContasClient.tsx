@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createAccount, deleteAccount } from "@/actions/accounts";
+import { createAccount, deleteAccount, getAccountDeletionImpact } from "@/actions/accounts";
 import { formatCurrency } from "@/lib/utils";
+import { Aviso, ConfirmarDestrutivo } from "@/components/ui/Aviso";
 import type { Account } from "@/types";
 
 
@@ -20,21 +21,45 @@ export function ContasClient({ accounts }: { accounts: Account[] }) {
     const router = useRouter();
     const [showForm, setShowForm] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const [erro, setErro] = useState("");
+    const [sucesso, setSucesso] = useState("");
+    const [excluindo, setExcluindo] = useState<{ conta: Account; lancamentos: number } | null>(null);
 
     async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
+        setErro("");
         startTransition(async () => {
-            await createAccount(fd);
+            const res = await createAccount(fd);
+            if (!res.ok) {
+                // Antes o formulário fechava aqui como se tivesse dado certo.
+                setErro(res.error);
+                return;
+            }
             setShowForm(false);
+            setSucesso("Conta criada.");
             router.refresh();
         });
     }
 
-    async function handleDelete(id: string) {
-        if (!confirm("Excluir esta conta? As transações associadas também serão excluídas.")) return;
+    /** Consulta o impacto ANTES de perguntar — Art. 1. */
+    async function pedirExclusao(conta: Account) {
+        setErro("");
+        const res = await getAccountDeletionImpact(conta.id);
+        setExcluindo({ conta, lancamentos: res.ok ? res.data : 0 });
+    }
+
+    function confirmarExclusao() {
+        if (!excluindo) return;
+        const { conta } = excluindo;
         startTransition(async () => {
-            await deleteAccount(id);
+            const res = await deleteAccount(conta.id);
+            setExcluindo(null);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
+            setSucesso(`Conta "${conta.name}" excluída.`);
             router.refresh();
         });
     }
@@ -53,6 +78,9 @@ export function ContasClient({ accounts }: { accounts: Account[] }) {
                 <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Nova Conta</button>
             </div>
 
+            {erro && <Aviso tipo="erro" mensagem={erro} onFechar={() => setErro("")} />}
+            {sucesso && <Aviso tipo="sucesso" mensagem={sucesso} autoFecharMs={3000} onFechar={() => setSucesso("")} />}
+
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1rem" }}>
                 {accounts.map((account) => (
                     <div
@@ -67,7 +95,7 @@ export function ContasClient({ accounts }: { accounts: Account[] }) {
                             </div>
                             <button
                                 className="btn btn-danger"
-                                onClick={() => handleDelete(account.id)}
+                                onClick={() => pedirExclusao(account)}
                                 disabled={isPending}
                                 style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
                             >✕</button>
@@ -128,6 +156,21 @@ export function ContasClient({ accounts }: { accounts: Account[] }) {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {excluindo && (
+                <ConfirmarDestrutivo
+                    titulo={`Excluir a conta "${excluindo.conta.name}"?`}
+                    impacto={[
+                        `Saldo atual: ${formatCurrency(Number(excluindo.conta.balance))}`,
+                        excluindo.lancamentos > 0
+                            ? `${excluindo.lancamentos} lançamento(s) serão excluídos junto`
+                            : "Nenhum lançamento vinculado",
+                    ]}
+                    onConfirmar={confirmarExclusao}
+                    onCancelar={() => setExcluindo(null)}
+                    ocupado={isPending}
+                />
             )}
         </div>
     );

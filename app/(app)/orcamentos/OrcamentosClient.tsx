@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upsertBudget, deleteBudget } from "@/actions/budgets";
 import { formatCurrency } from "@/lib/utils";
+import { Aviso } from "@/components/ui/Aviso";
 import type { Category } from "@/types";
 
 
@@ -34,6 +35,8 @@ export function OrcamentosClient({
     const router = useRouter();
     const [showForm, setShowForm] = useState(false);
     const [isPending, startTransition] = useTransition();
+    const [erro, setErro] = useState("");
+    const [sucesso, setSucesso] = useState("");
 
     function handleMonthChange(delta: number) {
         let m = month + delta;
@@ -48,23 +51,38 @@ export function OrcamentosClient({
         const fd = new FormData(e.currentTarget);
         fd.set("month", String(month));
         fd.set("year", String(year));
+        setErro("");
         startTransition(async () => {
-            await upsertBudget(fd);
+            const res = await upsertBudget(fd);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
             setShowForm(false);
+            setSucesso("Orçamento salvo.");
             router.refresh();
         });
     }
 
     async function handleDelete(id: string) {
         if (!confirm("Remover este orçamento?")) return;
+        setErro("");
         startTransition(async () => {
-            await deleteBudget(id);
+            const res = await deleteBudget(id);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
+            setSucesso("Orçamento removido.");
             router.refresh();
         });
     }
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {erro && <Aviso tipo="erro" mensagem={erro} onFechar={() => setErro("")} />}
+            {sucesso && <Aviso tipo="sucesso" mensagem={sucesso} autoFecharMs={3000} onFechar={() => setSucesso("")} />}
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div className="animate-fade-up">
                     <h1 style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>Orçamentos</h1>
