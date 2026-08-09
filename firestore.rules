@@ -28,7 +28,66 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Padrão: nega tudo, em qualquer caminho, para qualquer cliente.
+    // ------------------------------------------------------------------------
+    // As regras abaixo NÃO são o que protege o sistema hoje — o padrão de negar
+    // tudo, no final, já faz isso. Elas existem como segunda barreira: se um dia
+    // alguma tela passar a ler direto do navegador, a regra correta já está
+    // escrita e revisada, em vez de ser improvisada às pressas.
+    //
+    // Espelham a máquina de estados de lib/core/expense-status.ts.
+    // ------------------------------------------------------------------------
+
+    function logado()  { return request.auth != null; }
+    function ativo()   { return logado() && request.auth.token.status == 'ACTIVE'; }
+    function ehAdmin() { return logado() && request.auth.token.role == 'ADMIN'; }
+    function souEu(uid) { return logado() && request.auth.uid == uid; }
+
+    // Despesas de ressarcimento
+    match /expenses/{id} {
+      // Lê: o dono, ou o administrador (precisa ver para aprovar).
+      allow read: if ativo() && (souEu(resource.data.userId) || ehAdmin());
+
+      // Cria: só em nome próprio, e só nos estados iniciais.
+      allow create: if ativo()
+                    && souEu(request.resource.data.userId)
+                    && request.resource.data.status in ['RASCUNHO', 'ENVIADA'];
+
+      // Dono edita apenas o conteúdo, e apenas antes da decisão. Não pode tocar
+      // em status nem nos campos de aprovação — é isso que impede alguém de se
+      // auto-aprovar.
+      allow update: if ativo()
+                    && souEu(resource.data.userId)
+                    && resource.data.status in ['RASCUNHO', 'REJEITADA']
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.approvedBy == resource.data.approvedBy
+                    && request.resource.data.paymentBatchId == resource.data.paymentBatchId
+                    && (
+                         request.resource.data.status == resource.data.status
+                         || request.resource.data.status == 'ENVIADA'
+                       );
+
+      // Decisão e ressarcimento: só administrador.
+      allow update: if ativo() && ehAdmin();
+
+      // Exclui: só o dono, e só antes de enviar.
+      allow delete: if ativo()
+                    && souEu(resource.data.userId)
+                    && resource.data.status in ['RASCUNHO', 'REJEITADA'];
+    }
+
+    // Categorias corporativas: todos leem, só o administrador mexe.
+    match /expenseCategories/{id} {
+      allow read: if ativo();
+      allow write: if ativo() && ehAdmin();
+    }
+
+    // Lotes de pagamento: o dono lê o seu; só o administrador cria.
+    match /paymentBatches/{id} {
+      allow read: if ativo() && (souEu(resource.data.userId) || ehAdmin());
+      allow write: if ativo() && ehAdmin();
+    }
+
+    // Padrão: nega tudo, em qualquer outro caminho, para qualquer cliente.
     match /{document=**} {
       allow read, write: if false;
     }

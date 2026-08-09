@@ -58,6 +58,63 @@ export interface Transaction {
     updatedAt: Date;
 }
 
+// --- Ressarcimento de despesas da equipe -------------------------------------
+
+export type ExpenseStatus = "RASCUNHO" | "ENVIADA" | "APROVADA" | "REJEITADA" | "RESSARCIDA";
+
+/**
+ * Despesa de rua a ser ressarcida pela empresa.
+ * Valores em CENTAVOS (inteiro) — ver lib/core/money.ts.
+ */
+export interface Expense {
+    id: string;
+    userId: string;
+    /** Nome desnormalizado para o relatório do admin não precisar cruzar. */
+    userName: string;
+    amountCents: number;
+    date: Date;
+    categoryId: string;
+    description: string;
+    /** Nulo é permitido: a foto é opcional, e a falta dela fica sinalizada. */
+    receiptPath: string | null;
+    receiptUrl: string | null;
+    status: ExpenseStatus;
+    rejectionReason: string | null;
+    approvedBy: string | null;
+    approvedByName: string | null;
+    approvedAt: Date | null;
+    paymentBatchId: string | null;
+    reimbursedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+/** Categoria corporativa — global, mantida pelo admin. */
+export interface ExpenseCategory {
+    id: string;
+    name: string;
+    icon: string;
+    active: boolean;
+    createdAt: Date;
+}
+
+export type BatchStatus = "ABERTO" | "PAGO";
+
+/** Fechamento de pagamento: um lote por pessoa por período. */
+export interface PaymentBatch {
+    id: string;
+    userId: string;
+    userName: string;
+    periodStart: Date;
+    periodEnd: Date;
+    totalCents: number;
+    expenseCount: number;
+    status: BatchStatus;
+    paidAt: Date | null;
+    createdBy: string;
+    createdAt: Date;
+}
+
 export interface Budget {
     id: string;
     categoryId: string;

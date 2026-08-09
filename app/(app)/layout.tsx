@@ -1,5 +1,6 @@
 import { requireActiveUser } from "@/lib/auth";
 import { listarUsuarios } from "@/lib/core/repositories/users.repo";
+import { contarPorStatus } from "@/lib/core/repositories/expenses.repo";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 
@@ -8,16 +9,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const usuario = await requireActiveUser();
     const isAdmin = usuario.role === "ADMIN";
 
-    // Contador de cadastros à espera — só faz sentido (e só é lido) para o admin.
-    const pendentes = isAdmin
-        ? (await listarUsuarios()).filter((u) => u.status === "PENDING").length
-        : 0;
+    // Contadores de pendência. Os do administrador só são lidos para ele.
+    const [pendentes, aprovacoes, corrigir] = await Promise.all([
+        isAdmin ? listarUsuarios().then((u) => u.filter((x) => x.status === "PENDING").length) : 0,
+        isAdmin ? contarPorStatus("ENVIADA") : 0,
+        contarPorStatus("REJEITADA", usuario.uid),
+    ]);
 
     return (
         <div style={{ display: "flex", minHeight: "100vh" }}>
             {/* Sidebar: visível apenas em telas >= 768px */}
             <div className="sidebar-wrapper">
-                <Sidebar isAdmin={isAdmin} pendentes={pendentes} />
+                <Sidebar isAdmin={isAdmin} pendentes={pendentes} aprovacoes={aprovacoes} corrigir={corrigir} />
             </div>
 
             <main className="main-content">
@@ -26,7 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
             {/* Bottom nav: visível apenas em telas < 768px */}
             <div className="bottom-nav-wrapper">
-                <BottomNav isAdmin={isAdmin} pendentes={pendentes} />
+                <BottomNav isAdmin={isAdmin} pendentes={pendentes} aprovacoes={aprovacoes} corrigir={corrigir} />
             </div>
 
             <style>{`

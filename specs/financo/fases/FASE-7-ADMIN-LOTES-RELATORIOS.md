@@ -3,7 +3,8 @@ programa: financo
 tipo: fase
 fase: 7
 titulo: Painel do admin — aprovação, lotes de pagamento e relatórios
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [6]
 herda: ../../00-CONSTITUTION.md
 ---

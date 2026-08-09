@@ -6,16 +6,49 @@ import { SessionControls } from "@/components/layout/SessionControls";
 
 const links = [
   { href: "/dashboard", label: "Dashboard", icon: "◧" },
+  { href: "/despesas", label: "Despesas", icon: "🧾", badge: "corrigir" as const },
   { href: "/transacoes", label: "Transações", icon: "⇄" },
   { href: "/contas", label: "Contas", icon: "▦" },
   { href: "/categorias", label: "Categorias", icon: "⌘" },
   { href: "/orcamentos", label: "Orçamentos", icon: "◎" },
 ];
 
-const linksAdmin = [{ href: "/admin/usuarios", label: "Usuários", icon: "◉" }];
+const linksAdmin = [
+  { href: "/admin/aprovacoes", label: "Aprovações", icon: "✓", badge: "aprovacoes" as const },
+  { href: "/admin/relatorios", label: "Relatórios", icon: "▤" },
+  { href: "/admin/usuarios", label: "Usuários", icon: "◉", badge: "pendentes" as const },
+];
 
-export function Sidebar({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean; pendentes?: number }) {
+export function Sidebar({
+  isAdmin = false,
+  pendentes = 0,
+  aprovacoes = 0,
+  corrigir = 0,
+}: {
+  isAdmin?: boolean;
+  pendentes?: number;
+  aprovacoes?: number;
+  corrigir?: number;
+}) {
   const pathname = usePathname();
+  const contadores = { pendentes, aprovacoes, corrigir };
+
+  const Badge = ({ n }: { n: number }) =>
+    n > 0 ? (
+      <span
+        style={{
+          marginLeft: "auto",
+          backgroundColor: "#ffc107",
+          color: "#0a0e1a",
+          borderRadius: "10px",
+          padding: "0 6px",
+          fontSize: "0.65rem",
+          fontWeight: 700,
+        }}
+      >
+        {n}
+      </span>
+    ) : null;
 
   return (
     <aside
@@ -49,7 +82,7 @@ export function Sidebar({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean;
       </div>
 
       <nav style={{ flex: 1, padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: "2px" }}>
-        {links.map(({ href, label, icon }) => {
+        {links.map(({ href, label, icon, badge }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
@@ -84,6 +117,7 @@ export function Sidebar({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean;
             >
               <span>{icon}</span>
               {label}
+              {badge && <Badge n={contadores[badge]} />}
             </Link>
           );
         })}
@@ -103,7 +137,7 @@ export function Sidebar({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean;
             >
               Administração
             </div>
-            {linksAdmin.map(({ href, label, icon }) => {
+            {linksAdmin.map(({ href, label, icon, badge }) => {
               const active = pathname === href || pathname.startsWith(href + "/");
               return (
                 <Link
@@ -125,21 +159,7 @@ export function Sidebar({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean;
                 >
                   <span>{icon}</span>
                   {label}
-                  {pendentes > 0 && (
-                    <span
-                      style={{
-                        marginLeft: "auto",
-                        backgroundColor: "#ffc107",
-                        color: "#0a0e1a",
-                        borderRadius: "10px",
-                        padding: "0 6px",
-                        fontSize: "0.65rem",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {pendentes}
-                    </span>
-                  )}
+                  {badge && <Badge n={contadores[badge]} />}
                 </Link>
               );
             })}

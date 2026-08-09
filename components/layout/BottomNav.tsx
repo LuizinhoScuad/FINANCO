@@ -53,22 +53,50 @@ const links = [
   },
 ];
 
-const linkAdmin = {
-  href: "/admin/usuarios",
-  label: "Usuários",
+const linkDespesas = {
+  href: "/despesas",
+  label: "Despesas",
   icon: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M4 4h16v13a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" /><path d="M8 8h8M8 12h8M8 16h4" />
     </svg>
   ),
 };
 
-export function BottomNav({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolean; pendentes?: number }) {
+const linkAprovacoes = {
+  href: "/admin/aprovacoes",
+  label: "Aprovar",
+  icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+};
+
+export function BottomNav({
+  isAdmin = false,
+  pendentes = 0,
+  aprovacoes = 0,
+  corrigir = 0,
+}: {
+  isAdmin?: boolean;
+  pendentes?: number;
+  aprovacoes?: number;
+  corrigir?: number;
+}) {
   const pathname = usePathname();
-  // No celular o espaço é curto: com a área administrativa, mostramos as 4
-  // telas mais usadas em vez das 5, para os alvos de toque não encolherem.
-  const itens = isAdmin ? [...links.slice(0, 4), linkAdmin] : links;
+
+  // No celular o espaço é curto: cinco alvos de toque é o limite confortável.
+  // Despesas entra sempre — é o motivo de o app existir para a equipe.
+  const itens = isAdmin
+    ? [links[0], linkDespesas, linkAprovacoes, links[1], { ...linkDespesas, href: "/admin/usuarios", label: "Usuários", icon: linkDespesas.icon }]
+    : [links[0], linkDespesas, links[1], links[2], links[4]];
+
+  const badges: Record<string, number> = {
+    "/despesas": corrigir,
+    "/admin/aprovacoes": aprovacoes,
+    "/admin/usuarios": pendentes,
+  };
 
   return (
     <nav
@@ -88,7 +116,8 @@ export function BottomNav({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolea
     >
       {itens.map(({ href, label, icon }) => {
         const active = pathname === href || pathname.startsWith(href + "/");
-        const mostrarBadge = href === linkAdmin.href && pendentes > 0;
+        const contador = badges[href] ?? 0;
+        const mostrarBadge = contador > 0;
         return (
           <Link
             key={href}
@@ -129,7 +158,7 @@ export function BottomNav({ isAdmin = false, pendentes = 0 }: { isAdmin?: boolea
                   padding: "0 4px",
                 }}
               >
-                {pendentes}
+                {contador}
               </span>
             )}
           </Link>

@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { createTransaction, deleteTransaction, toggleTransactionStatus, getTransactions, attachReceipt } from "@/actions/transactions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/types";
-import * as XLSX from "xlsx";
+import {
+    exportarTransacoesPDF,
+    exportarTransacoesXLSX,
+    type LinhaTransacao,
+} from "@/lib/core/exports/cliente";
 
 function toInputDate(br: string) {
     const parts = br.split("/");
@@ -193,50 +197,39 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
         });
     }
 
-    function buildRows(txs: TxWithRels[]) {
+    function buildRows(txs: TxWithRels[]): LinhaTransacao[] {
         return [...txs]
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .map((tx) => ({
-                Data: formatDate(tx.date),
-                Descrição: tx.description,
-                Favorecido: tx.payee ?? "",
-                Categoria: `${tx.category.icon} ${tx.category.name}`,
-                Conta: tx.account.name,
-                Tipo: tx.type === "INCOME" ? "Receita" : "Despesa",
-                Status: tx.status === "COMPLETED" ? "Pago" : "Pendente",
-                Valor: tx.type === "INCOME" ? Number(tx.amount) : -Number(tx.amount),
-                Tags: tx.tags ?? "",
-                Notas: tx.notes ?? "",
+                data: formatDate(tx.date),
+                descricao: tx.description,
+                favorecido: tx.payee ?? "",
+                categoria: `${tx.category.icon} ${tx.category.name}`,
+                conta: tx.account.name,
+                tipo: tx.type === "INCOME" ? "Receita" : "Despesa",
+                situacao: tx.status === "COMPLETED" ? "Pago" : "Pendente",
+                valor: tx.type === "INCOME" ? Number(tx.amount) : -Number(tx.amount),
             }));
     }
 
-    function writeXLSX(rows: ReturnType<typeof buildRows>, filename: string) {
-        const ws = XLSX.utils.json_to_sheet(rows);
+    const periodo = `${MONTH_NAMES[month - 1]} ${year}`;
 
-        // Coluna H = Valor (índice 7) — formatar como moeda R$
-        const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
-        for (let r = range.s.r + 1; r <= range.e.r; r++) {
-            const cell = ws[XLSX.utils.encode_cell({ r, c: 7 })];
-            if (cell) cell.z = 'R$ #,##0.00';
-        }
-
-        ws["!cols"] = [{ wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 16 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 20 }, { wch: 30 }];
-        // Congelar primeira linha (cabeçalhos)
-        ws["!freeze"] = { xSplit: 0, ySplit: 1 };
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Transações");
-        XLSX.writeFile(wb, filename);
-    }
-
-    function handleExportXLSX() {
-        writeXLSX(buildRows(filtered), `transacoes-${MONTH_NAMES[month - 1].toLowerCase()}-${year}.xlsx`);
-    }
-
-    async function handleExportAll() {
+    function exportar(formato: "pdf" | "xlsx", escopo: "mes" | "tudo") {
+        setErro("");
         startTransition(async () => {
-            const all = await getTransactions() as TxWithRels[];
-            writeXLSX(buildRows(all), `transacoes-completo.xlsx`);
+            try {
+                const dados = escopo === "mes" ? filtered : ((await getTransactions()) as TxWithRels[]);
+                const linhas = buildRows(dados);
+                const base = escopo === "mes" ? `transacoes-${periodo.toLowerCase().replace(" ", "-")}` : "transacoes-completo";
+
+                if (formato === "pdf") {
+                    await exportarTransacoesPDF(linhas, escopo === "mes" ? `Transações — ${periodo}` : "Transações — histórico completo");
+                } else {
+                    await exportarTransacoesXLSX(linhas, base);
+                }
+            } catch (e) {
+                setErro("Não foi possível gerar o arquivo: " + (e instanceof Error ? e.message : ""));
+            }
         });
     }
 
@@ -264,11 +257,14 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                         {transactions.length} registro(s)
                     </p>
                 </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button className="btn btn-ghost" onClick={handleExportXLSX} title="Exportar mês atual" style={{ fontSize: "0.85rem" }}>
-                        ↓ Mês
+                <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <button className="btn btn-ghost" onClick={() => exportar("pdf", "mes")} disabled={isPending} title={`PDF de ${periodo}`} style={{ fontSize: "0.8rem" }}>
+                        ↓ PDF
                     </button>
-                    <button className="btn btn-ghost" onClick={handleExportAll} disabled={isPending} title="Exportar todas as transações" style={{ fontSize: "0.85rem" }}>
+                    <button className="btn btn-ghost" onClick={() => exportar("xlsx", "mes")} disabled={isPending} title={`XLSX de ${periodo}`} style={{ fontSize: "0.8rem" }}>
+                        ↓ XLSX
+                    </button>
+                    <button className="btn btn-ghost" onClick={() => exportar("xlsx", "tudo")} disabled={isPending} title="XLSX do histórico completo" style={{ fontSize: "0.8rem" }}>
                         {isPending ? "..." : "↓ Tudo"}
                     </button>
                     <button className="btn btn-primary" onClick={() => setShowForm(true)}>

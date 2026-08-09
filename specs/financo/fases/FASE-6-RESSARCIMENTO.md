@@ -3,7 +3,8 @@ programa: financo
 tipo: fase
 fase: 6
 titulo: Ressarcimento — modelo, regras e fluxo do colaborador
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [2, 3, 4]
 herda: ../../00-CONSTITUTION.md
 ---
