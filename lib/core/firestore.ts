@@ -1,7 +1,7 @@
 import "server-only";
 import { Timestamp, type CollectionReference, type DocumentReference } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase-admin";
-import { requireCurrentUserId } from "@/lib/auth";
+import { requireActiveUser } from "@/lib/auth";
 
 /**
  * Fundação da camada de dados: caminhos, conversão e semeadura.
@@ -19,9 +19,17 @@ export type Escopo = {
   transactions: CollectionReference;
 };
 
-/** Ponto único onde o identificador do usuário vira caminho no banco. */
+/**
+ * Ponto único onde o identificador do usuário vira caminho no banco.
+ *
+ * Usa `requireActiveUser`, não apenas "está autenticado": passar por aqui exige
+ * conta liberada. Como TODO acesso a dado pessoal atravessa esta função, a
+ * verificação de status fica garantida em um lugar só — as actions de Contas,
+ * Categorias e Orçamentos não precisam repetir a checagem e não podem esquecê-la
+ * (Art. 5). Apontado pela auditoria da Fase 9.
+ */
 export async function escopo(): Promise<Escopo> {
-  const uid = await requireCurrentUserId();
+  const { uid } = await requireActiveUser();
   return escopoDe(uid);
 }
 

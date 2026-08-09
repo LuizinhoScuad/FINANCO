@@ -12,9 +12,15 @@
  * enquanto isso.
  */
 
-/** Reais → centavos. `12.34` → `1234` */
+/**
+ * Reais → centavos. `12.34` → `1234`
+ *
+ * O `Number.EPSILON` não é enfeite: `1.005 * 100` vale `100.49999999999999` em
+ * ponto flutuante, e `Math.round` disso devolve 100 em vez de 101 — um centavo
+ * a menos, silenciosamente. O teste `money.test.ts` pegou exatamente isso.
+ */
 export function paraCentavos(reais: number): number {
-  return Math.round(reais * 100);
+  return Math.round((reais + Number.EPSILON) * 100);
 }
 
 /** Centavos → reais. `1234` → `12.34` */

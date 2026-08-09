@@ -3,7 +3,8 @@ programa: financo
 tipo: fase
 fase: 9
 titulo: Testes, integração contínua, auditoria e go-live
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [7, 8]
 observacao: a integração contínua pode ser adiantada para logo após a Fase 4
 herda: ../../00-CONSTITUTION.md
