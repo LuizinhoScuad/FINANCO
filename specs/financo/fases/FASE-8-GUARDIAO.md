@@ -3,7 +3,8 @@ programa: financo
 tipo: fase
 fase: 8
 titulo: Guardião — verificação de integridade e auto-aprendizado
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [6]
 observacao: pode iniciar logo após a Fase 4, com o conjunto parcial de verificações
 herda: ../../00-CONSTITUTION.md
