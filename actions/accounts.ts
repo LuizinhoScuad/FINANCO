@@ -1,47 +1,80 @@
 "use server";
 
-import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  atualizarConta,
+  criarConta,
+  excluirConta,
+  impactoDeExcluirConta,
+  listarContas,
+  saldoTotal,
+} from "@/lib/core/repositories/accounts.repo";
+import { traduzirErro } from "@/lib/guardrails/transactions";
+import { fail, failFromZod, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
+import type { Account } from "@/types";
 
-const AccountSchema = z.object({
-    name: z.string().min(1, "Nome obrigatório"),
-    type: z.enum(["CASH", "BANK", "SAVINGS", "INVESTMENT"]),
-    color: z.string().min(1),
-    balance: z.coerce.number().default(0),
+const Conta = z.object({
+  name: z.string().min(1, "Informe o nome da conta."),
+  type: z.enum(["CASH", "BANK", "SAVINGS", "INVESTMENT"]),
+  color: z.string().min(1),
+  balance: z.coerce.number().default(0),
 });
 
-export async function getAccounts() {
-    return db.account.findMany({ orderBy: { createdAt: "asc" } });
+export async function getAccounts(): Promise<Account[]> {
+  return listarContas();
 }
 
-export async function getTotalBalance() {
-    const accounts = await db.account.findMany({ select: { balance: true } });
-    return accounts.reduce((sum: number, a: { balance: unknown }) => sum + Number(a.balance), 0);
+export async function getTotalBalance(): Promise<number> {
+  return saldoTotal();
 }
 
-export async function createAccount(formData: FormData) {
-    const raw = Object.fromEntries(formData);
-    const parsed = AccountSchema.safeParse(raw);
-    if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+export async function createAccount(formData: FormData): Promise<Result> {
+  const parsed = Conta.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failFromZod(parsed.error.flatten());
 
-    await db.account.create({ data: parsed.data });
+  try {
+    await criarConta(parsed.data);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível criar a conta."));
+  }
 }
 
-export async function updateAccount(id: string, formData: FormData) {
-    const raw = Object.fromEntries(formData);
-    const parsed = AccountSchema.safeParse(raw);
-    if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+export async function updateAccount(id: string, formData: FormData): Promise<Result> {
+  const parsed = Conta.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failFromZod(parsed.error.flatten());
 
-    await db.account.update({ where: { id }, data: parsed.data });
+  try {
+    await atualizarConta(id, parsed.data);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível atualizar a conta."));
+  }
 }
 
-export async function deleteAccount(id: string) {
-    await db.account.delete({ where: { id } });
+/**
+ * Quantos lançamentos somem junto com a conta.
+ *
+ * Existe para a tela poder avisar ANTES de excluir, em vez de apagar histórico
+ * atrás de um "tem certeza?" genérico (Art. 1).
+ */
+export async function getAccountDeletionImpact(id: string): Promise<Result<number>> {
+  try {
+    return ok(await impactoDeExcluirConta(id));
+  } catch (erro) {
+    return fail(mensagemDeErro(erro, "Não foi possível verificar o impacto."));
+  }
+}
+
+export async function deleteAccount(id: string): Promise<Result> {
+  try {
+    await excluirConta(id);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível excluir a conta."));
+  }
 }

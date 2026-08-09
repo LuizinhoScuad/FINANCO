@@ -44,6 +44,8 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const cameraRef = useRef<HTMLInputElement>(null);
     const attachRef = useRef<HTMLInputElement>(null);
     const [attachingId, setAttachingId] = useState<string | null>(null);
+    const [erro, setErro] = useState("");
+    const [idEnvio, setIdEnvio] = useState(() => crypto.randomUUID());
 
     async function handleOCR(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -124,13 +126,18 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
         if (!file || !attachingId) return;
         if (attachRef.current) attachRef.current.value = "";
 
+        setErro("");
         try {
             const { uploadReceipt } = await import("@/lib/firebase-storage");
             const url = await uploadReceipt(file);
-            await attachReceipt(attachingId, url);
+            const res = await attachReceipt(attachingId, url);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
             router.refresh();
         } catch (err) {
-            alert("Erro ao vincular recibo: " + (err instanceof Error ? err.message : String(err)));
+            setErro("Não foi possível enviar o recibo: " + (err instanceof Error ? err.message : String(err)));
         } finally {
             setAttachingId(null);
         }
@@ -149,28 +156,39 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
+        // Marca deste envio: num reenvio acidental (duplo clique) o valor é o
+        // mesmo, e o servidor recusa em vez de duplicar lançamento e saldo.
+        fd.set("submissionId", idEnvio);
+
+        setErro("");
         startTransition(async () => {
             const res = await createTransaction(fd);
-            if (res.error) {
-                alert(JSON.stringify(res.error));
-            } else {
-                setShowForm(false);
-                setRepeat(false);
-                setOcrDesc("");
-                setOcrAmount("");
-                setOcrDate(new Date().toISOString().split("T")[0]);
-                setReceiptUrl("");
-                setReceiptPreview("");
-                setOcrStatus("");
-                router.refresh();
+            if (!res.ok) {
+                setErro(res.error);
+                return;
             }
+            setShowForm(false);
+            setRepeat(false);
+            setOcrDesc("");
+            setOcrAmount("");
+            setOcrDate(new Date().toISOString().split("T")[0]);
+            setReceiptUrl("");
+            setReceiptPreview("");
+            setOcrStatus("");
+            setIdEnvio(crypto.randomUUID());
+            router.refresh();
         });
     }
 
     async function handleDelete(id: string) {
         if (!confirm("Excluir esta transação?")) return;
+        setErro("");
         startTransition(async () => {
-            await deleteTransaction(id);
+            const res = await deleteTransaction(id);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
             router.refresh();
         });
     }
@@ -223,9 +241,15 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     }
 
     async function handleToggleStatus(id: string) {
+        setErro("");
         startTransition(async () => {
             const res = await toggleTransactionStatus(id);
-            if (res.error) alert(res.error);
+            if (!res.ok) {
+                // Antes seguia atualizando a tela mesmo com erro, dando a
+                // impressão de que a mudança valeu.
+                setErro(res.error);
+                return;
+            }
             router.refresh();
         });
     }
@@ -252,6 +276,30 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                     </button>
                 </div>
             </div>
+
+            {erro && (
+                <div
+                    className="card animate-fade-up"
+                    style={{
+                        borderLeft: "3px solid var(--color-danger)",
+                        color: "var(--color-danger)",
+                        fontSize: "0.875rem",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: "1rem",
+                        alignItems: "center",
+                    }}
+                >
+                    <span>{erro}</span>
+                    <button
+                        onClick={() => setErro("")}
+                        style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: "1rem" }}
+                        aria-label="Fechar aviso"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
 
             {/* Month Selector + Filter */}
             <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>

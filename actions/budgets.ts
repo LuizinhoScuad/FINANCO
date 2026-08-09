@@ -1,56 +1,46 @@
 "use server";
 
-import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getMonthRange } from "@/lib/utils";
+import {
+  excluirOrcamento,
+  listarOrcamentos,
+  salvarOrcamento,
+  type OrcamentoComGasto,
+} from "@/lib/core/repositories/budgets.repo";
+import { traduzirErro } from "@/lib/guardrails/transactions";
+import { fail, failFromZod, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
 
-const BudgetSchema = z.object({
-    categoryId: z.string().min(1),
-    amount: z.coerce.number().positive("Valor deve ser positivo"),
-    month: z.coerce.number().min(1).max(12),
-    year: z.coerce.number().min(2020),
+const Orcamento = z.object({
+  categoryId: z.string().min(1, "Escolha a categoria."),
+  amount: z.coerce.number().positive("O limite precisa ser maior que zero."),
+  month: z.coerce.number().min(1).max(12),
+  year: z.coerce.number().min(2020),
 });
 
-export async function getBudgets(month: number, year: number) {
-    const { start, end } = getMonthRange(month, year);
-    const budgets = await db.budget.findMany({
-        where: { month, year },
-        include: { category: true },
-    });
-
-    const transactions = await db.transaction.groupBy({
-        by: ["categoryId"],
-        where: { type: "EXPENSE", date: { gte: start, lte: end } },
-        _sum: { amount: true },
-    });
-
-    const spentMap = new Map(transactions.map((t) => [t.categoryId, Number(t._sum.amount ?? 0)]));
-
-    return budgets.map((b) => ({
-        ...b,
-        spent: spentMap.get(b.categoryId) ?? 0,
-        limit: Number(b.amount),
-    }));
+export async function getBudgets(month: number, year: number): Promise<OrcamentoComGasto[]> {
+  return listarOrcamentos(month, year);
 }
 
-export async function upsertBudget(formData: FormData) {
-    const raw = Object.fromEntries(formData);
-    const parsed = BudgetSchema.safeParse(raw);
-    if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+export async function upsertBudget(formData: FormData): Promise<Result> {
+  const parsed = Orcamento.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failFromZod(parsed.error.flatten());
 
-    const { categoryId, amount, month, year } = parsed.data;
-    await db.budget.upsert({
-        where: { categoryId_month_year: { categoryId, month, year } },
-        update: { amount },
-        create: { categoryId, amount, month, year },
-    });
+  try {
+    await salvarOrcamento(parsed.data);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível salvar o orçamento."));
+  }
 }
 
-export async function deleteBudget(id: string) {
-    await db.budget.delete({ where: { id } });
+export async function deleteBudget(id: string): Promise<Result> {
+  try {
+    await excluirOrcamento(id);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível excluir o orçamento."));
+  }
 }

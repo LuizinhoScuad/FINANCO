@@ -1,45 +1,62 @@
 "use server";
 
-import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  atualizarCategoria,
+  criarCategoria,
+  excluirCategoria,
+  listarCategorias,
+} from "@/lib/core/repositories/categories.repo";
+import { traduzirErro } from "@/lib/guardrails/transactions";
+import { fail, failFromZod, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
+import type { Category } from "@/types";
 
-const CategorySchema = z.object({
-    name: z.string().min(1, "Nome obrigatório"),
-    icon: z.string().min(1),
-    type: z.enum(["INCOME", "EXPENSE"]),
-    color: z.string().min(1),
+const Categoria = z.object({
+  name: z.string().min(1, "Informe o nome da categoria."),
+  icon: z.string().min(1),
+  type: z.enum(["INCOME", "EXPENSE"]),
+  color: z.string().min(1),
 });
 
-export async function getCategories(type?: "INCOME" | "EXPENSE") {
-    return db.category.findMany({
-        where: type ? { type } : undefined,
-        orderBy: { name: "asc" },
-    });
+export async function getCategories(type?: "INCOME" | "EXPENSE"): Promise<Category[]> {
+  return listarCategorias(type);
 }
 
-export async function createCategory(formData: FormData) {
-    const raw = Object.fromEntries(formData);
-    const parsed = CategorySchema.safeParse(raw);
-    if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+export async function createCategory(formData: FormData): Promise<Result> {
+  const parsed = Categoria.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failFromZod(parsed.error.flatten());
 
-    await db.category.create({ data: parsed.data });
+  try {
+    await criarCategoria(parsed.data);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível criar a categoria."));
+  }
 }
 
-export async function updateCategory(id: string, formData: FormData) {
-    const raw = Object.fromEntries(formData);
-    const parsed = CategorySchema.safeParse(raw);
-    if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+export async function updateCategory(id: string, formData: FormData): Promise<Result> {
+  const parsed = Categoria.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failFromZod(parsed.error.flatten());
 
-    await db.category.update({ where: { id }, data: parsed.data });
+  try {
+    await atualizarCategoria(id, parsed.data);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível atualizar a categoria."));
+  }
 }
 
-export async function deleteCategory(id: string) {
-    await db.category.delete({ where: { id } });
+export async function deleteCategory(id: string): Promise<Result> {
+  try {
+    await excluirCategoria(id);
     revalidatePath("/");
-    return { success: true };
+    return ok();
+  } catch (erro) {
+    // "Categoria em uso" chega aqui e agora aparece na tela, em vez de virar
+    // uma promessa rejeitada sem tratamento.
+    return fail(mensagemDeErro(traduzirErro(erro), "Não foi possível excluir a categoria."));
+  }
 }

@@ -3,13 +3,52 @@ programa: financo
 tipo: fase
 fase: 4
 titulo: Integridade de dados — operações atômicas e camada tipada
-status: pendente
+status: concluida
+concluida_em: 2026-08-09
 depende_de: [0]
 sessoes_previstas: 2
 herda: ../../00-CONSTITUTION.md
 ---
 
 # FASE 4 — Integridade de dados
+
+> ## ✅ Concluída em 2026-08-09
+>
+> **Provado sob concorrência real**, não por inspeção — teste com gravações
+> simultâneas contra o banco de produção, em conta descartável:
+>
+> | Verificação | Resultado |
+> |---|---|
+> | Duplo clique: uma gravação aceita, uma recusada | ✅ 1 aceita, 1 recusada |
+> | Saldo contou o valor uma única vez | ✅ −100,00 |
+> | 10 gravações simultâneas, nenhuma perdida | ✅ −200,00 |
+> | Saldo === soma dos lançamentos efetivados | ✅ bate exatamente |
+>
+> **Dados preservados:** backup antes (15 e 32 registros) e depois (15 e 32).
+> Nenhuma perda — o formato dos documentos não mudou, só o caminho de acesso.
+>
+> **Decisões tomadas na execução:**
+> - Idempotência por identificador determinístico: o formulário carrega um
+>   `submissionId`, e o documento nasce com esse id. Reenvio produz o mesmo id,
+>   e `create` recusa em vez de duplicar. Recusar com "já foi salvo" é melhor
+>   que aceitar em dobro.
+> - Parcelamento inteiro numa transação só: antes era laço sequencial, e
+>   interrupção no meio deixava parcelas faltando com saldo pela metade.
+> - Semeadura com marca `seeded` no documento do usuário, lida e escrita dentro
+>   da transação. O cache em memória anterior era por instância do servidor, e
+>   duas instâncias simultâneas semeavam em duplicidade.
+> - `salvarOrcamento` atômico, e removendo duplicatas herdadas do modelo antigo
+>   no caminho.
+> - Excluir categoria em uso passa a ser recusado com mensagem, em vez de virar
+>   promessa rejeitada sem tratamento.
+> - Órfãos (conta ou categoria removida) aparecem marcados em vez de sumirem —
+>   o dado existe e o Guardião vai apontá-lo (Art. 3).
+> - `getMonthlyHistory` passou a consultar os meses em paralelo; antes eram
+>   nove idas sequenciais, cada uma relendo a coleção inteira.
+>
+> **`lib/db.ts` excluído.** Nenhuma referência restante no código.
+>
+> Commit: `Fase 4 (SDD): integridade de dados`
 
 **Objetivo:** eliminar a corrupção silenciosa de saldo e a camada de dados sem
 tipo. É a fase mais delicada do plano — mexe no que já está em produção.
