@@ -46,4 +46,10 @@ firebase-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/app/generated/prisma
+# arquivos de trabalho local (nunca versionar)
+tmp_*.js
+tmp_*.mjs
+RECIBO.*
+
+# saídas do guardião — contêm dados financeiros reais (LGPD)
+/outputs/relatorios/
