@@ -50,17 +50,17 @@ service firebase.storage {
     }
 
     // ---- recibos ----------------------------------------------------------
-    // Caminho: receipts/{uid}/...  (inclui receipts/{uid}/expenses/... da Fase 6)
+    // Caminho: receipts/{uid}/... — comprovante anexado a um lançamento.
 
     match /receipts/{uid}/{allPaths=**} {
 
-      // Lê: o dono, ou o admin (precisa ver o comprovante para aprovar).
+      // Lê: o dono, ou o admin.
       allow read: if ehDono(uid) && estaAtivo() || ehAdmin();
 
       // Grava: só o próprio dono, ativo, e só imagem de até 10 MB.
       allow create, update: if ehDono(uid) && estaAtivo() && ehImagemValida();
 
-      // Não se apaga comprovante: é lastro de um ressarcimento pago.
+      // Não se apaga comprovante: é o lastro do lançamento.
       // Limpeza de arquivo órfão é tarefa administrativa, feita pelo servidor.
       allow delete: if false;
     }

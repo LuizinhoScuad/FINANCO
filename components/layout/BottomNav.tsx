@@ -53,12 +53,13 @@ const links = [
   },
 ];
 
-const linkDespesas = {
-  href: "/despesas",
-  label: "Despesas",
+const linkRelatorios = {
+  href: "/relatorios",
+  label: "Relatórios",
   icon: (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16v13a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" /><path d="M8 8h8M8 12h8M8 16h4" />
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+      <path d="M8 13h8M8 17h5" />
     </svg>
   ),
 };
@@ -87,13 +88,14 @@ export function BottomNav({
   const pathname = usePathname();
 
   // No celular o espaço é curto: cinco alvos de toque é o limite confortável.
-  // Despesas entra sempre — é o motivo de o app existir para a equipe.
+  // Transações e Relatórios entram sempre — é o ciclo inteiro de quem está na
+  // rua: lançar o gasto e depois mandar o relatório pelo WhatsApp.
   const itens = isAdmin
-    ? [links[0], linkDespesas, linkAprovacoes, links[1], { ...linkDespesas, href: "/admin/usuarios", label: "Usuários", icon: linkDespesas.icon }]
-    : [links[0], linkDespesas, links[1], links[2], links[4]];
+    ? [links[0], links[1], linkRelatorios, linkAprovacoes, { ...linkAprovacoes, href: "/admin/usuarios", label: "Usuários" }]
+    : [links[0], links[1], linkRelatorios, links[2], links[4]];
 
   const badges: Record<string, number> = {
-    "/despesas": corrigir,
+    "/transacoes": corrigir,
     "/admin/aprovacoes": aprovacoes,
     "/admin/usuarios": pendentes,
   };

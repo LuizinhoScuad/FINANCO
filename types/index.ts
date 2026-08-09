@@ -38,6 +38,14 @@ export interface Category {
     createdAt: Date;
 }
 
+/**
+ * Situação do pedido de reembolso — só existe quando `reembolso` é verdadeiro.
+ *
+ * Não há rascunho: o lançamento é salvo já pedindo, porque em Transações o
+ * registro e o pedido são o mesmo gesto.
+ */
+export type AprovacaoStatus = "ENVIADA" | "APROVADA" | "REJEITADA" | "RESSARCIDA";
+
 export interface Transaction {
     id: string;
     description: string;
@@ -56,47 +64,27 @@ export interface Transaction {
     receiptUrl: string | null;
     createdAt: Date;
     updatedAt: Date;
-}
 
-// --- Ressarcimento de despesas da equipe -------------------------------------
-
-export type ExpenseStatus = "RASCUNHO" | "ENVIADA" | "APROVADA" | "REJEITADA" | "RESSARCIDA";
-
-/**
- * Despesa de rua a ser ressarcida pela empresa.
- * Valores em CENTAVOS (inteiro) — ver lib/core/money.ts.
- */
-export interface Expense {
-    id: string;
-    userId: string;
-    /** Nome desnormalizado para o relatório do admin não precisar cruzar. */
-    userName: string;
-    amountCents: number;
-    date: Date;
-    categoryId: string;
-    description: string;
-    /** Nulo é permitido: a foto é opcional, e a falta dela fica sinalizada. */
-    receiptPath: string | null;
-    receiptUrl: string | null;
-    status: ExpenseStatus;
+    // --- pedido de reembolso à empresa ---------------------------------------
+    /** Marcado, o lançamento entra na fila do gestor. Desmarcado, é particular. */
+    reembolso: boolean;
+    /** Nulo quando o lançamento é particular. */
+    aprovacao: AprovacaoStatus | null;
     rejectionReason: string | null;
     approvedBy: string | null;
     approvedByName: string | null;
     approvedAt: Date | null;
     paymentBatchId: string | null;
     reimbursedAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
 }
 
-/** Categoria corporativa — global, mantida pelo admin. */
-export interface ExpenseCategory {
-    id: string;
-    name: string;
-    icon: string;
-    active: boolean;
-    createdAt: Date;
-}
+/** Lançamento de reembolso com o dono identificado — visão do gestor. */
+export type PedidoDeReembolso = Transaction & {
+    userId: string;
+    userName: string;
+    categoryName: string;
+    accountName: string;
+};
 
 export type BatchStatus = "ABERTO" | "PAGO";
 
@@ -107,6 +95,7 @@ export interface PaymentBatch {
     userName: string;
     periodStart: Date;
     periodEnd: Date;
+    /** Em CENTAVOS (inteiro) — o total pago não pode derivar (ver money.ts). */
     totalCents: number;
     expenseCount: number;
     status: BatchStatus;

@@ -18,8 +18,8 @@ import { adminDb } from "@/lib/firebase-admin";
  * — deixava o saldo permanentemente errado, sem registro e sem aviso. E dois
  * cliques rápidos no mesmo botão contavam o valor duas vezes.
  *
- * Num sistema que vai controlar ressarcimento de outras pessoas, saldo errado em
- * silêncio é o pior modo de falha possível.
+ * Num sistema que controla dinheiro, saldo errado em silêncio é o pior modo de
+ * falha possível.
  */
 
 /** Erro de regra de negócio: aborta a transação com mensagem para o usuário. */

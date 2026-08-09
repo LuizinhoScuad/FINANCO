@@ -3,11 +3,23 @@ programa: financo
 tipo: fase
 fase: 7
 titulo: Painel do admin — aprovação, lotes de pagamento e relatórios
-status: concluida
+status: revogada
+revogada_em: 2026-08-09
 concluida_em: 2026-08-09
 depende_de: [6]
 herda: ../../00-CONSTITUTION.md
 ---
+
+> ## 🚫 FASE REVOGADA — 09/08/2026
+>
+> O módulo de ressarcimento foi **retirado do produto** e todo o código desta
+> fase foi removido do repositório. Na prática ele criava uma segunda porta de
+> lançamento, concorrente e confusa com a de Transações.
+>
+> Este arquivo permanece apenas como **registro histórico**. Não execute nada
+> aqui. O caminho único de lançamento é `app/(app)/transacoes/`.
+>
+> Ver: [`../01-SPEC.md`](../01-SPEC.md#requisitos-revogados-v2) · [`../02-PLAN.md`](../02-PLAN.md)
 
 # FASE 7 — Aprovação, lotes e relatórios
 

@@ -49,6 +49,31 @@ export async function buscarPerfil(uid: string): Promise<Omit<UserProfile, "last
 }
 
 /**
+ * Perfil de quem existe no Auth mas ainda não tem documento no banco.
+ *
+ * `listarUsuarios` mostra essas contas de propósito — cadastro que falhou no
+ * meio, conta criada por fora. Só que o painel prometia uma ação que sempre
+ * falhava: o botão "Liberar" respondia "Usuário não encontrado" e não havia
+ * caminho nenhum para resolver pela tela. Agora o perfil que faltava é criado
+ * na hora, a partir do que o Auth sabe, e a decisão do administrador vale.
+ */
+export async function garantirPerfil(uid: string): Promise<Omit<UserProfile, "lastSignInAt">> {
+  const existente = await buscarPerfil(uid);
+  if (existente) return existente;
+
+  const conta = await adminAuth.getUser(uid);
+  await criarPerfilPendente({
+    uid,
+    name: conta.displayName ?? conta.email ?? "Sem nome",
+    email: conta.email ?? null,
+  });
+
+  const criado = await buscarPerfil(uid);
+  if (!criado) throw new Error("Não foi possível criar o perfil deste usuário.");
+  return criado;
+}
+
+/**
  * Todos os usuários, cruzando o perfil do Firestore com o último acesso do Auth.
  *
  * Parte do Auth, não do Firestore: assim uma conta criada no Auth que ainda não

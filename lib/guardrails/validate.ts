@@ -61,6 +61,19 @@ const Lancamento = z.object({
   totalInstallments: z.number().optional().nullable(),
   createdAt: DataFlexivel.optional().nullable(),
   updatedAt: DataFlexivel.optional().nullable(),
+
+  // Pedido de reembolso. Precisam estar declarados: `z.object` descarta campo
+  // desconhecido, e sem isto uma restauração devolveria todos os pedidos ao
+  // estado de lançamento particular — apagando aprovações e pagamentos.
+  // Opcionais porque backup antigo, feito antes desta funcionalidade, não os tem.
+  reembolso: z.boolean().optional().nullable(),
+  aprovacao: z.enum(["ENVIADA", "APROVADA", "REJEITADA", "RESSARCIDA"]).optional().nullable(),
+  rejectionReason: z.string().optional().nullable(),
+  approvedBy: z.string().optional().nullable(),
+  approvedByName: z.string().optional().nullable(),
+  approvedAt: DataFlexivel.optional().nullable(),
+  paymentBatchId: z.string().optional().nullable(),
+  reimbursedAt: DataFlexivel.optional().nullable(),
 });
 
 export const ArquivoDeBackup = z.object({

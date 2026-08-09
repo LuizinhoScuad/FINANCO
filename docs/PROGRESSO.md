@@ -14,6 +14,65 @@
 
 ## Sessões
 
+### 2026-08-09 — Reembolso remontado sobre Transações, Relatórios para todos, e o harness do SDD
+
+**Horário de registro:** 09/08/2026 às 20:29
+
+**Contexto — a sessão teve três viradas de rumo, todas do Luiz:**
+
+1. "Despesas ficou confusa, exclui tudo" → o módulo de ressarcimento foi **removido por inteiro** (SPEC v3). O defeito real era ter **duas portas de lançamento** concorrentes.
+2. "Preciso das aprovações e dos relatórios da equipe" → o reembolso **voltou**, agora construído **sobre** Transações, não ao lado (SPEC v4). Um caminho só de lançamento, com a camada do gestor por cima.
+3. "Não há nada particular nos lançamentos" → o histórico anterior foi **migrado** para pedidos de reembolso, revertendo a decisão de preservar o passado como particular.
+
+**O que foi implementado:**
+
+- **Pedido de reembolso é um lançamento marcado**, não outra entidade: caixa "Pedir reembolso" no formulário de Transações, marcada por padrão. Desmarcada, o lançamento é particular.
+- **Máquina de estados** (`lib/core/aprovacao.ts`): ENVIADA → APROVADA → RESSARCIDA (só via lote); ENVIADA → REJEITADA → ENVIADA (corrige e reenvia). Função pura, 20 testes.
+- **Relatórios no menu principal, para todo mundo** (não só admin): filtro por situação e período livre, PDF e XLSX gerados no navegador. Cada pessoa vê os próprios pedidos; o gestor vê a equipe e ganha o filtro por pessoa.
+- **"Já atendido" separado de "A receber"** na tela, no PDF e no Excel — é o que impede alguém de cobrar duas vezes o que já recebeu.
+- **Aprovações (admin)**: fila com comprovante à vista, aprovar/rejeitar com motivo obrigatório, **filtro por pessoa** e **aprovação em bloco** ("Aprovar os N de Fulano"), fechamento de lote com prévia obrigatória e comprovante em PDF.
+- **Filtro "Todos os períodos"** em Transações — antes, quem tinha lançamento espalhado no tempo abria a tela e via "nenhuma transação". Teto de 500 com aviso de truncamento.
+- Rótulos: Descrição com exemplo `Ex: Visita no cliente Mocotó`; "Favorecido / Recebedor" virou **"Observação/Acompanhante"** (tela, tabela e coluna do Excel).
+
+**Consulta do gestor sem migrar dado (D13):** a visão de equipe usa `collectionGroup` sobre `users/{uid}/transactions`. A alternativa — mover tudo para coleção de topo — exigiria migração destrutiva de dado real para economizar um índice.
+
+**Defeitos encontrados e corrigidos:**
+
+- **Índices do Firestore ausentes**: 6 consultas falhavam com `FAILED_PRECONDITION`. Ao publicar, o Firestore recusou o lote inteiro por causa de um índice **antigo e inválido** — `(date, __name__)` — que estava no repositório havia tempo e nunca fora publicado. Duas igualdades em `collectionGroup` exigem índice de campo único com escopo de grupo (`fieldOverrides`), não composto.
+- **Contadores derrubavam o app**: os badges rodam em `app/(app)/layout.tsx`, que embrulha todas as telas. Uma falha de índice tirava o app do ar por causa de um número no menu. Agora falham em silêncio, com o motivo no log.
+- **Backup perdia o pedido**: o schema de importação (`z.object`) descartava os campos de aprovação. Restaurar um backup transformaria pedido já pago em lançamento particular. Corrigido, com 3 testes travando a regressão.
+- **Botão "Liberar" quebrado**: `listarUsuarios` mostra contas do Auth sem perfil no banco de propósito, mas a ação sempre respondia "Usuário não encontrado" — a tela prometia algo impossível. Agora `garantirPerfil` cria o perfil que falta.
+- **Resíduo de teste em produção** (culpa do harness de testes desta sessão): o teste de fumaça apagava o documento mas não a conta no Auth, deixando um usuário fantasma no painel. Corrigido, com conferência que faz o teste falhar se sobrar algo.
+
+**Migração de dados (com backup, prévia e desfazer):**
+- Backup: `C:\Sistemas\financo-backups\backup-2026-08-09T23-00-59.json`
+- 11 lançamentos de despesa de `luizking` marcados como pedido ENVIADA, R$ 458,62. Receitas ficaram de fora.
+- Reversível: `node scripts/migrar-lancamentos-para-reembolso.mjs --todos --desfazer --aplicar`
+- Conferência posterior apontou 1 lançamento a menos que o backup ("Dhhhg", R$ 54) — aparentemente apagado pela tela, não pela migração.
+
+**Harness do SDD — arrumação estrutural:**
+- `specs/03-HARNESS.md` (novo): onde cada coisa mora, por que a raiz tem o que tem, os dois níveis de teste, regras de script e o protocolo de sessão.
+- `scripts/verificar-estrutura.mjs` (novo) + `npm run verificar:estrutura`: **faz valer** o documento. Falha com arquivo solto na raiz, `scripts/tmp/`, teste de banco fora de `tests/integracao/`, script não declarado no HARNESS, semeadura sem prefixo `zzz-teste-`. Virou o primeiro portão da CI.
+- Raiz enxuta: `firestore.rules`, `firestore.indexes.json` e `storage.rules` foram para `firebase/`; `iniciar_financo.bat` para `scripts/`; `tsconfig.tsbuildinfo` passou a ser gravado em `node_modules/.cache/`.
+- `tests/integracao/` (novo): ciclo real, fumaça autenticada, prova de consultas, estado de índices e conferência de backup — todos fora do portão rápido, que segue sem credencial e em milissegundos.
+
+**Arquivos principais:**
+- Novos: `lib/core/aprovacao.ts` · `actions/reembolsos.ts` · `app/(app)/relatorios/` · `app/(app)/admin/aprovacoes/` · `specs/03-HARNESS.md` · `scripts/verificar-estrutura.mjs` · `scripts/migrar-lancamentos-para-reembolso.mjs` · `scripts/simular-reembolso.mjs` · `scripts/limpar-residuo-teste.mjs` · `tests/aprovacao.test.ts` · `tests/integracao/**`
+- Removidos: `actions/expenses.ts` · `lib/core/expense-status.ts` · `lib/core/repositories/expenses.repo.ts` · `app/(app)/despesas/` · `scripts/testar-celular.mjs`
+- Alterados: `lib/core/repositories/transactions.repo.ts` · `users.repo.ts` · `actions/transactions.ts` · `admin-users.ts` · `TransacoesClient.tsx` · `layout.tsx` · `Sidebar.tsx` · `BottomNav.tsx` · `lib/core/exports/cliente.ts` · `lib/guardrails/validate.ts` · `firebase/*` · `specs/01-SPEC.md` (v4) · `specs/02-PLAN.md` (v4) · `CLAUDE.md` · `.github/workflows/ci.yml`
+
+**Verificação:** estrutura íntegra · 43 testes unitários · 15 de integração contra o Firestore real · fumaça autenticada em 8 telas com isolamento entre pessoas confirmado · filtro de período conferido no servidor · typecheck, lint e build verdes · Guardião provado como somente-leitura · zero resíduo `zzz-teste-*` no banco.
+
+**Pendências / próximos passos:**
+- O admin aprova os próprios pedidos (só existe um administrador) — comportamento pedido, registrado para não parecer descuido.
+- Promover alguém a ADMIN dá acesso aos lançamentos particulares de todos, inclusive os do Luiz. O aviso na tela diz isso.
+- Formulário tem "Observação/Acompanhante" e "Notas (opcional)" — nomes próximos demais, vale unificar.
+- Exemplos antigos ainda no formulário: Tags sugere `casa, lazer, fixo`.
+- 4 avisos de lint anteriores a esta sessão (variáveis não usadas em `TransacoesClient` e `MonthlyBarChart`).
+
+---
+
+
 ### 2026-04-12 — Fix deploy lento: arquivos grandes no git + otimização de build
 
 **Horário de registro:** 12/04/2026 às 14:26

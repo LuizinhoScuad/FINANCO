@@ -36,11 +36,12 @@ Com a realidade concreta, não com boas práticas genéricas:
 - São **~7 pessoas**, não uma empresa de mil funcionários
 - O uso principal é **na rua, pelo celular, com pressa**
 - Quem administra é o **Luiz**, que não programa e tem pouco tempo
-- Ninguém deve conseguir ver a despesa de outro colega
-- O dinheiro é **da empresa saindo para pessoas físicas** — errar corrói confiança
+- Ninguém deve conseguir ver o lançamento de outro colega
+- **Transações é o caminho único** de lançamento — proposta que crie uma segunda
+  tela de registro é rejeitada de saída (SPEC v3, D11)
 
 Uma sugestão que ignore isso é ruído. "Adicionar autenticação de dois fatores"
-soa maduro e é inadequado para sete pessoas que precisam registrar almoço na
+soa maduro e é inadequado para sete pessoas que precisam registrar um almoço na
 calçada.
 
 ## 3. APRENDE

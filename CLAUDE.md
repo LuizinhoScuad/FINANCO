@@ -10,6 +10,7 @@ O Financo segue desenvolvimento guiado por especificação. A ordem é sempre
 | Arquivo | Papel |
 |---|---|
 | [`specs/00-CONSTITUTION.md`](specs/00-CONSTITUTION.md) | 10 artigos invioláveis — herdados por tudo |
+| [`specs/03-HARNESS.md`](specs/03-HARNESS.md) | **Onde cada coisa mora** e como a sessão abre e fecha — verificável por máquina |
 | [`specs/financo/01-SPEC.md`](specs/financo/01-SPEC.md) | O quê e por quê: requisitos e critérios de aceite |
 | [`specs/financo/02-PLAN.md`](specs/financo/02-PLAN.md) | O como: arquitetura, decisões técnicas, sequência de fases |
 | [`specs/financo/fases/`](specs/financo/fases/) | Um arquivo por fase, autocontido e executável |
@@ -23,12 +24,22 @@ specs/00-CONSTITUTION.md  +  specs/financo/01-SPEC.md  +  specs/financo/fases/FA
 Cada arquivo de fase declara a lista fechada do que ler. Não abra mais do que
 ele pede — é isso que mantém a sessão dentro do contexto.
 
-**Toda fase abre** com árvore de trabalho limpa e **fecha** com typecheck e
-build verdes, critérios de aceite verificados de fato e commit feito. O que não
-pôde ser verificado é declarado como não verificado (Art. 3), nunca presumido.
+**Toda fase abre** com árvore de trabalho limpa e **fecha** com os portões
+verdes, critérios de aceite verificados de fato e commit feito. O que não pôde
+ser verificado é declarado como não verificado (Art. 3), nunca presumido.
+
+```bash
+npm run verificar:estrutura   # o repositório continua organizado
+npm test && npm run typecheck && npm run lint && npm run build
+```
 
 **Regra de camada:** tela e rota nunca falam com o banco direto — sempre
 `tela → action → lib/core + lib/guardrails → banco`.
+
+**Onde colocar arquivo novo:** consulte [`specs/03-HARNESS.md`](specs/03-HARNESS.md)
+antes de criar qualquer coisa. Nada de arquivo solto na raiz, nada de
+`scripts/tmp/`, nada de script sem estar declarado na tabela do §4. Trabalho
+descartável vive no diretório temporário da sessão, fora do repositório.
 
 ---
 
@@ -36,8 +47,9 @@ pôde ser verificado é declarado como não verificado (Art. 3), nunca presumido
 
 Quando o usuário disser **"salva tudo"**, **"grava tudo"**, **"finaliza"**, **"faz o deploy"** ou expressões equivalentes (ex: "pode salvar", "commita tudo", "manda pro GitHub", "sobe pro ar"), execute **obrigatoriamente** os passos abaixo na ordem:
 
-### 1. Revisão de Código
-Execute `/code-reviewer` para revisar todo o código alterado na sessão atual.
+### 1. Revisão de Código e Estrutura
+Execute `npm run verificar:estrutura` e, em seguida, `/code-reviewer` para
+revisar todo o código alterado na sessão atual.
 
 ### 2. Atualizar PROGRESSO.md
 Antes de escrever, capture o horário real do sistema:

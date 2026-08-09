@@ -10,6 +10,7 @@ import {
     exportarTransacoesXLSX,
     type LinhaTransacao,
 } from "@/lib/core/exports/cliente";
+import { corDoStatus, rotuloCurto } from "@/lib/core/aprovacao";
 
 function toInputDate(br: string) {
     const parts = br.split("/");
@@ -27,11 +28,15 @@ type Props = {
     accounts: Account[];
     month: number;
     year: number;
+    /** Ignorando o recorte mensal: a lista traz o histórico inteiro. */
+    tudo?: boolean;
+    /** Verdadeiro quando a listagem bateu no teto e há mais coisa no banco. */
+    truncado?: boolean;
 };
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-export function TransacoesClient({ transactions, categories, accounts, month, year }: Props) {
+export function TransacoesClient({ transactions, categories, accounts, month, year, tudo = false, truncado = false }: Props) {
     const router = useRouter();
     const [showForm, setShowForm] = useState(false);
     const [isPending, startTransition] = useTransition();
@@ -50,6 +55,9 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const [attachingId, setAttachingId] = useState<string | null>(null);
     const [erro, setErro] = useState("");
     const [idEnvio, setIdEnvio] = useState(() => crypto.randomUUID());
+    // Marcado por padrão: o uso principal do app é pedir de volta o que se gastou
+    // pela empresa. Quem estiver lançando algo pessoal desmarca.
+    const [reembolso, setReembolso] = useState(true);
 
     async function handleOCR(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
@@ -173,6 +181,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             }
             setShowForm(false);
             setRepeat(false);
+            setReembolso(true);
             setOcrDesc("");
             setOcrAmount("");
             setOcrDate(new Date().toISOString().split("T")[0]);
@@ -203,7 +212,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             .map((tx) => ({
                 data: formatDate(tx.date),
                 descricao: tx.description,
-                favorecido: tx.payee ?? "",
+                observacao: tx.payee ?? "",
                 categoria: `${tx.category.icon} ${tx.category.name}`,
                 conta: tx.account.name,
                 tipo: tx.type === "INCOME" ? "Receita" : "Despesa",
@@ -212,7 +221,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             }));
     }
 
-    const periodo = `${MONTH_NAMES[month - 1]} ${year}`;
+    const periodo = tudo ? "todo o período" : `${MONTH_NAMES[month - 1]} ${year}`;
 
     function exportar(formato: "pdf" | "xlsx", escopo: "mes" | "tudo") {
         setErro("");
@@ -254,7 +263,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                 <div className="animate-fade-up">
                     <h1 style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>Transações</h1>
                     <p style={{ color: "var(--color-muted)", fontSize: "0.875rem" }}>
-                        {transactions.length} registro(s)
+                        {transactions.length} registro(s) · {tudo ? "todo o período" : `${MONTH_NAMES[month - 1]} ${year}`}
                     </p>
                 </div>
                 <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", justifyContent: "flex-end" }}>
@@ -297,15 +306,44 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                 </div>
             )}
 
-            {/* Month Selector + Filter */}
+            {/* Período + Filtro */}
             <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <button className="btn btn-ghost" onClick={() => handleMonthChange(-1)} style={{ padding: "0.25rem 0.625rem" }}>‹</button>
-                    <span style={{ fontWeight: 600, minWidth: "100px", textAlign: "center" }}>
-                        {MONTH_NAMES[month - 1]} {year}
+                {tudo ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span style={{ fontWeight: 600, color: "var(--color-accent)" }}>Todo o período</span>
+                    </div>
+                ) : (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <button className="btn btn-ghost" onClick={() => handleMonthChange(-1)} style={{ padding: "0.25rem 0.625rem" }}>‹</button>
+                        <span style={{ fontWeight: 600, minWidth: "100px", textAlign: "center" }}>
+                            {MONTH_NAMES[month - 1]} {year}
+                        </span>
+                        <button className="btn btn-ghost" onClick={() => handleMonthChange(1)} style={{ padding: "0.25rem 0.625rem" }}>›</button>
+                    </div>
+                )}
+
+                {/* Sair da navegação mês a mês: sem isto, quem tem lançamento
+                    espalhado no tempo abre a tela e vê "nenhuma transação".
+                    O selo de truncamento evita a pior leitura possível — achar
+                    que está vendo tudo quando o banco tem mais. */}
+                <button
+                    className="btn btn-ghost"
+                    onClick={() => router.push(tudo ? "/transacoes" : "/transacoes?periodo=tudo")}
+                    style={{
+                        padding: "0.25rem 0.75rem",
+                        fontSize: "0.8rem",
+                        color: tudo ? "var(--color-accent)" : undefined,
+                        borderColor: tudo ? "var(--color-accent)" : undefined,
+                    }}
+                >
+                    {tudo ? "↩ Voltar ao mês" : "🗓 Todos os períodos"}
+                </button>
+
+                {truncado && (
+                    <span style={{ fontSize: "0.72rem", color: "#ffc107" }}>
+                        mostrando os 500 mais recentes — há mais no histórico
                     </span>
-                    <button className="btn btn-ghost" onClick={() => handleMonthChange(1)} style={{ padding: "0.25rem 0.625rem" }}>›</button>
-                </div>
+                )}
                 <div style={{ display: "flex", gap: "0.25rem" }}>
                     {[["all", "Todos"], ["INCOME", "Receitas"], ["EXPENSE", "Despesas"]].map(([v, l]) => (
                         <button
@@ -336,7 +374,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                     <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ backgroundColor: "var(--color-surface-2)", borderBottom: "1px solid var(--color-border)" }}>
-                                {["Status", "Descrição / Favorecido", "Categoria", "Conta", "Data", "Valor", ""].map((h) => (
+                                {["Status", "Descrição / Observação", "Categoria", "Conta", "Data", "Valor", ""].map((h) => (
                                     <th key={h} style={{ padding: "0.75rem 1rem", textAlign: "left", fontSize: "0.75rem", color: "var(--color-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                                         {h}
                                     </th>
@@ -382,9 +420,37 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                     {tx.installment}/{tx.totalInstallments}
                                                 </span>
                                             )}
+                                            {tx.reembolso && (
+                                                <span
+                                                    title={
+                                                        tx.aprovacao === "REJEITADA" && tx.rejectionReason
+                                                            ? `Motivo: ${tx.rejectionReason}`
+                                                            : tx.aprovacao === "RESSARCIDA" && tx.reimbursedAt
+                                                              ? `Pago em ${formatDate(tx.reimbursedAt)}`
+                                                              : undefined
+                                                    }
+                                                    style={{
+                                                        marginLeft: "0.5rem",
+                                                        fontSize: "0.62rem",
+                                                        fontWeight: 700,
+                                                        padding: "2px 6px",
+                                                        borderRadius: "3px",
+                                                        whiteSpace: "nowrap",
+                                                        color: corDoStatus(tx.aprovacao).cor,
+                                                        backgroundColor: corDoStatus(tx.aprovacao).fundo,
+                                                    }}
+                                                >
+                                                    {rotuloCurto(tx.aprovacao)}
+                                                </span>
+                                            )}
                                         </div>
+                                        {tx.aprovacao === "REJEITADA" && tx.rejectionReason && (
+                                            <div style={{ fontSize: "0.68rem", color: "var(--color-danger)", marginTop: "3px" }}>
+                                                Rejeitada: {tx.rejectionReason} — corrija e salve para reenviar.
+                                            </div>
+                                        )}
                                         <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                                            {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
+                                            {tx.payee && <span style={{ color: "var(--color-accent)" }}>{tx.payee}</span>}
                                             {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
                                             {tx.receiptUrl ? (
                                                 <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
@@ -558,7 +624,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                     <input
                                         name="description"
                                         className="input-base"
-                                        placeholder="Ex: Aluguel"
+                                        placeholder="Ex: Visita no cliente Mocotó"
                                         value={ocrDesc}
                                         onChange={(e) => setOcrDesc(e.target.value)}
                                         required
@@ -605,13 +671,43 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
 
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                                 <div>
-                                    <label className="label-sm">Favorecido / Recebedor</label>
-                                    <input name="payee" className="input-base" placeholder="Ex: Mercado Livre" />
+                                    {/* O campo guardado continua sendo `payee`: renomear a
+                                        coluna no banco exigiria migrar todo lançamento
+                                        existente para trocar um rótulo de tela. */}
+                                    <label className="label-sm">Observação/Acompanhante</label>
+                                    <input name="payee" className="input-base" placeholder="Ex: visita ao cliente, com o Roberto" />
                                 </div>
                                 <div>
                                     <label className="label-sm">Tags (separadas por vírgula)</label>
                                     <input name="tags" className="input-base" placeholder="casa, lazer, fixo" />
                                 </div>
+                            </div>
+
+                            {/* Pedido de reembolso — o que separa o gasto da empresa do gasto
+                                pessoal. Marcado por padrão porque é o uso principal do app. */}
+                            <div
+                                style={{
+                                    padding: "0.875rem",
+                                    borderRadius: "4px",
+                                    border: `1px solid ${reembolso ? "rgba(0, 217, 139, 0.35)" : "var(--color-border)"}`,
+                                    backgroundColor: reembolso ? "rgba(0, 217, 139, 0.06)" : "var(--color-surface-2)",
+                                }}
+                            >
+                                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", cursor: "pointer", fontWeight: 600, color: reembolso ? "var(--color-accent)" : "inherit" }}>
+                                    <input
+                                        type="checkbox"
+                                        name="reembolso"
+                                        checked={reembolso}
+                                        onChange={(e) => setReembolso(e.target.checked)}
+                                        style={{ width: "16px", height: "16px", accentColor: "var(--color-accent)" }}
+                                    />
+                                    Pedir reembolso da empresa
+                                </label>
+                                <p style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "0.45rem", lineHeight: 1.5 }}>
+                                    {reembolso
+                                        ? "Vai para a fila do gestor e aparece nos Relatórios. Anexe o comprovante — sem ele o pedido fica marcado como “sem comprovante”."
+                                        : "Lançamento particular: não entra na fila de aprovação nem nos Relatórios de reembolso."}
+                                </p>
                             </div>
 
                             <div>

@@ -3,13 +3,12 @@
  *
  * Dinheiro em ponto flutuante mente: `0.1 + 0.2` vale `0.30000000000000004`.
  * Some algumas centenas de lançamentos e o saldo deriva alguns centavos — o
- * bastante para o total de um ressarcimento não bater com a soma das despesas,
- * e para a equipe perder a confiança no sistema.
+ * bastante para o extrato não bater com a soma das transações, e para quem usa
+ * perder a confiança no sistema.
  *
- * O módulo de ressarcimento guarda tudo em CENTAVOS (inteiro), onde esse erro
- * não existe. O módulo pessoal ainda guarda em reais (decimal) por continuidade
- * (Art. 10); as funções `arredondar` e `somar` existem para conter a deriva lá
- * enquanto isso.
+ * Os lançamentos são guardados em reais (decimal) por continuidade (Art. 10);
+ * `arredondar` e `somar` existem para conter a deriva. As conversões de/para
+ * centavos ficam disponíveis para quem precisar de aritmética exata.
  */
 
 /**

@@ -4,19 +4,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SessionControls } from "@/components/layout/SessionControls";
 
-const links = [
+/** `badge` nomeia qual contador aparece ao lado do item. */
+type ItemDeMenu = {
+  href: string;
+  label: string;
+  icon: string;
+  badge?: "pendentes" | "aprovacoes" | "corrigir";
+};
+
+const links: ItemDeMenu[] = [
   { href: "/dashboard", label: "Dashboard", icon: "◧" },
-  { href: "/despesas", label: "Despesas", icon: "🧾", badge: "corrigir" as const },
-  { href: "/transacoes", label: "Transações", icon: "⇄" },
+  { href: "/transacoes", label: "Transações", icon: "⇄", badge: "corrigir" },
+  { href: "/relatorios", label: "Relatórios", icon: "▤" },
   { href: "/contas", label: "Contas", icon: "▦" },
   { href: "/categorias", label: "Categorias", icon: "⌘" },
   { href: "/orcamentos", label: "Orçamentos", icon: "◎" },
 ];
 
-const linksAdmin = [
-  { href: "/admin/aprovacoes", label: "Aprovações", icon: "✓", badge: "aprovacoes" as const },
-  { href: "/admin/relatorios", label: "Relatórios", icon: "▤" },
-  { href: "/admin/usuarios", label: "Usuários", icon: "◉", badge: "pendentes" as const },
+const linksAdmin: ItemDeMenu[] = [
+  { href: "/admin/aprovacoes", label: "Aprovações", icon: "✓", badge: "aprovacoes" },
+  { href: "/admin/usuarios", label: "Usuários", icon: "◉", badge: "pendentes" },
 ];
 
 export function Sidebar({

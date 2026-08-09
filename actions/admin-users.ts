@@ -7,6 +7,7 @@ import {
   buscarPerfil,
   contarAdminsAtivos,
   definirPapelEStatus,
+  garantirPerfil,
   listarUsuarios,
 } from "@/lib/core/repositories/users.repo";
 import type { UserProfile } from "@/types";
@@ -24,8 +25,9 @@ export async function aprovarUsuario(uid: string): Promise<Result> {
   try {
     const admin = await requireAdmin();
 
-    const perfil = await buscarPerfil(uid);
-    if (!perfil) return fail("Usuário não encontrado.");
+    // Conta que existe no Auth sem perfil no banco ganha o perfil agora — é o
+    // que o painel promete ao listá-la (ver garantirPerfil).
+    const perfil = await garantirPerfil(uid);
     if (perfil.status === "ACTIVE") return ok();
 
     await definirPapelEStatus(uid, perfil.role, "ACTIVE", admin.uid);

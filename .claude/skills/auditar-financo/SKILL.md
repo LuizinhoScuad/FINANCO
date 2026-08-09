@@ -2,8 +2,8 @@
 name: auditar-financo
 description: >
   Verifica a integridade dos dados do Financo — saldos que não fecham,
-  referências órfãs, despesas em estado impossível, comprovantes perdidos,
-  pendências paradas. Roda a varredura determinística primeiro e só analisa se
+  referências órfãs, lançamentos duplicados, comprovantes perdidos,
+  cadastros parados. Roda a varredura determinística primeiro e só analisa se
   houver achado. Use quando o usuário disser "auditar o financo", "verificar a
   integridade", "os saldos batem?", "tem algo errado nos dados", "rodar o
   guardião" ou "/auditar-financo".
@@ -46,12 +46,13 @@ O que é verificado:
 | Gravidade | Verificação |
 |---|---|
 | 🔴 Crítica | Saldo da conta ≠ soma dos lançamentos efetivados |
-| 🔴 Crítica | Despesa em estado fora da máquina; aprovada sem quem aprovou |
-| 🔴 Crítica | Valor de despesa não inteiro em centavos |
-| 🔴 Crítica | Total do lote ≠ soma das despesas que o compõem |
-| 🟠 Alta | Referência órfã (lançamento sem conta, despesa sem dono, lote inexistente) |
+| 🔴 Crítica | Pedido de reembolso em situação fora da máquina; aprovado sem quem aprovou |
+| 🔴 Crítica | Total do lote ≠ soma dos pedidos que o compõem |
+| 🟠 Alta | Referência órfã (lançamento sem conta; pedido apontando para lote inexistente) |
+| 🟠 Alta | Pedido atendido fora de lote; valor não positivo |
 | 🟠 Alta | Comprovante referenciado sem arquivo no Storage |
-| 🟠 Alta | Cadastro aguardando há 7+ dias; despesa esperando decisão há 7+ dias |
+| 🟠 Alta | Cadastro aguardando liberação há 7+ dias; pedido esperando decisão há 7+ dias |
+| 🟡 Média | Lançamento sem categoria; aprovado há 30+ dias e ainda não pago |
 | 🟡 Média | Lançamentos idênticos em menos de 2 minutos; orçamento duplicado |
 | ⚪ Baixa | Arquivo órfão no Storage; orçamento sem categoria |
 

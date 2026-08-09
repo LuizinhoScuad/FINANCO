@@ -32,6 +32,12 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      # Primeiro portão, e o mais barato: o repositório continua no formato
+      # descrito em specs/03-HARNESS.md — sem arquivo solto na raiz, sem script
+      # não documentado, sem teste de banco vazando para o portão rápido.
+      - name: Estrutura do repositório
+        run: npm run verificar:estrutura
+
       - name: Lint
         run: npm run lint
 

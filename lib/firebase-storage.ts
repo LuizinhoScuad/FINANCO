@@ -28,10 +28,9 @@ function waitForAuth(): Promise<string> {
  * Envia o comprovante para `receipts/{uid}/...`.
  *
  * O caminho precisa começar com o próprio uid: é o que as regras do Storage
- * verificam. `subpasta` separa despesas de ressarcimento dos recibos das
- * transações pessoais, sem sair do escopo permitido.
+ * verificam. Nada é gravado fora desse escopo.
  */
-export async function uploadReceipt(file: File, subpasta?: string): Promise<string> {
+export async function uploadReceipt(file: File): Promise<string> {
     const uid = await waitForAuth();
 
     if (!file.type.startsWith("image/")) {
@@ -43,11 +42,8 @@ export async function uploadReceipt(file: File, subpasta?: string): Promise<stri
 
     const storage = getStorage(getApp());
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const caminho = subpasta
-        ? `receipts/${uid}/${subpasta}/${Date.now()}.${ext}`
-        : `receipts/${uid}/${Date.now()}.${ext}`;
 
-    const storageRef = ref(storage, caminho);
+    const storageRef = ref(storage, `receipts/${uid}/${Date.now()}.${ext}`);
     await uploadBytes(storageRef, file, { contentType: file.type });
     return getDownloadURL(storageRef);
 }

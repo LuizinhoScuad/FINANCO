@@ -155,7 +155,7 @@ export function UsuariosClient({
                           !confirm(
                             `Alterar ${u.name} para ${novo === "ADMIN" ? "administrador" : "colaborador"}?` +
                               (novo === "ADMIN"
-                                ? "\n\nAdministrador vê as despesas de toda a equipe e aprova ressarcimentos."
+                                ? "\n\nATENÇÃO: administrador aprova reembolsos e enxerga TODOS os lançamentos de TODAS as pessoas — inclusive os marcados como particulares, e inclusive os seus."
                                 : ""),
                           )
                         )

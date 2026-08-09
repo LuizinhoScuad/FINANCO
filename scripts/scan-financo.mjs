@@ -65,10 +65,6 @@ function paraData(v) {
   return new Date(v);
 }
 
-function moeda(centavos) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(centavos / 100);
-}
-
 function reais(v) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
@@ -76,7 +72,10 @@ function reais(v) {
 // --- varredura ---------------------------------------------------------------
 
 const usuarios = await db.collection("users").get();
-const resumo = { usuarios: usuarios.size, contas: 0, lancamentos: 0, despesas: 0, lotes: 0 };
+const resumo = { usuarios: usuarios.size, contas: 0, lancamentos: 0, pedidos: 0, lotes: 0 };
+
+// Pedidos de reembolso, acumulados de todo mundo, para as conferências de lote.
+const pedidos = [];
 
 // 1. Finanças pessoais, por usuário
 for (const usuario of usuarios.docs) {
@@ -163,6 +162,39 @@ for (const usuario of usuarios.docs) {
     achar("MEDIA", "Possível duplicidade", `${quem}: ${suspeitos} par(es) de lançamentos idênticos criados com menos de 2 minutos de diferença`);
   }
 
+  // 1d-bis. Pedidos de reembolso desta pessoa
+  const SITUACOES = ["ENVIADA", "APROVADA", "REJEITADA", "RESSARCIDA"];
+  for (const doc of lancamentos.docs) {
+    const d = doc.data();
+    if (d.reembolso !== true) continue;
+
+    resumo.pedidos++;
+    pedidos.push({ id: doc.id, dono: usuario.id, quem, ...d });
+
+    if (!SITUACOES.includes(d.aprovacao)) {
+      achar("CRITICA", "Situação inválida", `Pedido ${doc.id} de ${quem} está em "${d.aprovacao}", que não existe na máquina de estados`);
+      continue;
+    }
+    if (d.aprovacao === "APROVADA" && !d.approvedBy) {
+      achar("CRITICA", "Aprovação sem autor", `Pedido ${doc.id} de ${quem} está aprovado mas não registra quem aprovou`);
+    }
+    if (d.aprovacao === "RESSARCIDA" && !d.paymentBatchId) {
+      achar("ALTA", "Atendido fora de lote", `Pedido ${doc.id} de ${quem} consta como pago mas não pertence a nenhum lote`);
+    }
+    if (!(Number(d.amount) > 0)) {
+      achar("ALTA", "Valor não positivo", `Pedido ${doc.id} de ${quem} tem valor ${reais(Number(d.amount) || 0)}`);
+    }
+
+    const referencia = paraData(d.createdAt) ?? new Date();
+    const dias = Math.floor((Date.now() - referencia.getTime()) / DIAS(1));
+    if (d.aprovacao === "ENVIADA" && dias >= 7) {
+      achar("ALTA", "Pedido esperando decisão", `${quem} aguarda aprovação há ${dias} dias (${reais(Number(d.amount) || 0)})`);
+    }
+    if (d.aprovacao === "APROVADA" && dias >= 30) {
+      achar("MEDIA", "Aprovado sem pagamento", `${quem}: aprovado há ${dias} dias e ainda não pago (${reais(Number(d.amount) || 0)})`);
+    }
+  }
+
   // 1e. Cadastro parado
   if (perfil.status === "PENDING") {
     const dias = Math.floor((Date.now() - (paraData(perfil.createdAt)?.getTime() ?? Date.now())) / DIAS(1));
@@ -172,67 +204,27 @@ for (const usuario of usuarios.docs) {
   }
 }
 
-// 2. Ressarcimento
-const despesas = await db.collection("expenses").get();
+// 2. Lotes de pagamento — o total declarado bate com os pedidos que o compõem
 const lotes = await db.collection("paymentBatches").get();
-resumo.despesas = despesas.size;
 resumo.lotes = lotes.size;
-
-const ESTADOS = ["RASCUNHO", "ENVIADA", "APROVADA", "REJEITADA", "RESSARCIDA"];
 const idsLotes = new Set(lotes.docs.map((d) => d.id));
-const idsUsuarios = new Set(usuarios.docs.map((d) => d.id));
 
-for (const doc of despesas.docs) {
-  const d = doc.data();
-
-  if (!ESTADOS.includes(d.status)) {
-    achar("CRITICA", "Estado inválido", `Despesa ${doc.id} está em "${d.status}", que não existe na máquina de estados`);
-  }
-  if (d.status === "APROVADA" && !d.approvedBy) {
-    achar("CRITICA", "Aprovação sem autor", `Despesa ${doc.id} está aprovada mas não registra quem aprovou`);
-  }
-  if (d.status === "RESSARCIDA" && !d.paymentBatchId) {
-    achar("ALTA", "Ressarcida fora de lote", `Despesa ${doc.id} consta como paga mas não pertence a nenhum lote`);
-  }
-  if (d.paymentBatchId && !idsLotes.has(d.paymentBatchId)) {
-    achar("ALTA", "Lote inexistente", `Despesa ${doc.id} aponta para o lote ${d.paymentBatchId}, que não existe`);
-  }
-  if (!idsUsuarios.has(d.userId)) {
-    achar("ALTA", "Despesa sem dono", `Despesa ${doc.id} pertence a um usuário que não existe mais`);
-  }
-  if (typeof d.amountCents !== "number" || !Number.isInteger(d.amountCents)) {
-    achar("CRITICA", "Valor corrompido", `Despesa ${doc.id} tem valor não inteiro em centavos: ${d.amountCents}`);
-  }
-  if (d.amountCents <= 0) {
-    achar("ALTA", "Valor não positivo", `Despesa ${doc.id} tem valor ${moeda(d.amountCents ?? 0)}`);
-  }
-
-  // Parada há muito tempo
-  if (d.status === "ENVIADA") {
-    const dias = Math.floor((Date.now() - (paraData(d.createdAt)?.getTime() ?? Date.now())) / DIAS(1));
-    if (dias >= 7) {
-      achar("ALTA", "Despesa esperando decisão", `${d.userName} aguarda aprovação há ${dias} dias (${moeda(d.amountCents)})`);
-    }
-  }
-  if (d.status === "APROVADA") {
-    const dias = Math.floor((Date.now() - (paraData(d.approvedAt)?.getTime() ?? Date.now())) / DIAS(1));
-    if (dias >= 30) {
-      achar("MEDIA", "Aprovada sem pagamento", `${d.userName} aprovada há ${dias} dias e ainda não ressarcida (${moeda(d.amountCents)})`);
-    }
+for (const p of pedidos) {
+  if (p.paymentBatchId && !idsLotes.has(p.paymentBatchId)) {
+    achar("ALTA", "Lote inexistente", `Pedido ${p.id} de ${p.quem} aponta para o lote ${p.paymentBatchId}, que não existe`);
   }
 }
 
-// 2b. Total do lote confere com as despesas
 for (const lote of lotes.docs) {
   const l = lote.data();
-  const doLote = despesas.docs.filter((d) => d.data().paymentBatchId === lote.id);
-  const soma = doLote.reduce((s, d) => s + Number(d.data().amountCents ?? 0), 0);
+  const doLote = pedidos.filter((p) => p.paymentBatchId === lote.id);
+  const somaCentavos = doLote.reduce((s, p) => s + Math.round((Number(p.amount) + Number.EPSILON) * 100), 0);
 
-  if (doLote.length !== l.expenseCount) {
-    achar("ALTA", "Lote inconsistente", `Lote de ${l.userName}: declara ${l.expenseCount} despesa(s), encontrei ${doLote.length}`);
+  if (doLote.length !== Number(l.expenseCount)) {
+    achar("ALTA", "Lote inconsistente", `Lote de ${l.userName}: declara ${l.expenseCount} pedido(s), encontrei ${doLote.length}`);
   }
-  if (soma !== l.totalCents) {
-    achar("CRITICA", "Total do lote divergente", `Lote de ${l.userName}: declara ${moeda(l.totalCents)}, soma das despesas ${moeda(soma)}`);
+  if (somaCentavos !== Number(l.totalCents)) {
+    achar("CRITICA", "Total do lote divergente", `Lote de ${l.userName}: declara ${reais(Number(l.totalCents) / 100)}, soma dos pedidos ${reais(somaCentavos / 100)}`);
   }
 }
 
@@ -242,10 +234,6 @@ const caminhosNoStorage = new Set(arquivos.map((a) => a.name));
 
 let semArquivo = 0;
 const urlsUsadas = new Set();
-for (const doc of despesas.docs) {
-  const url = doc.data().receiptUrl;
-  if (url) urlsUsadas.add(decodeURIComponent(url.split("/o/")[1]?.split("?")[0] ?? ""));
-}
 for (const usuario of usuarios.docs) {
   const lancamentos = await usuario.ref.collection("transactions").get();
   for (const l of lancamentos.docs) {
@@ -296,7 +284,7 @@ if (comoJson) {
   console.log(`Gerado em..: ${new Date().toLocaleString("pt-BR")}`);
   console.log(
     `Inventário.: ${resumo.usuarios} usuário(s) · ${resumo.contas} conta(s) · ` +
-      `${resumo.lancamentos} lançamento(s) · ${resumo.despesas} despesa(s) · ${resumo.lotes} lote(s)`,
+      `${resumo.lancamentos} lançamento(s) · ${resumo.pedidos} pedido(s) · ${resumo.lotes} lote(s)`,
   );
   console.log("═".repeat(66));
 

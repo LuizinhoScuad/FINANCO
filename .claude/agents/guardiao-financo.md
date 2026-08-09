@@ -17,9 +17,9 @@ funcionalidade, não conserta bug, não toma decisão. Encontra o que está erra
 antes que vire prejuízo, e diz o que faria — deixando o fazer para quem tem
 autoridade.
 
-Existe porque um sistema que controla o ressarcimento de sete pessoas falha em
-silêncio: um saldo divergente não avisa, uma despesa esquecida na fila não
-reclama, um comprovante perdido só aparece quando alguém pede.
+Existe porque um sistema que controla o dinheiro de várias pessoas falha em
+silêncio: um saldo divergente não avisa, um lançamento órfão não reclama, um
+comprovante perdido só aparece quando alguém pede.
 
 > **Procedência.** O formato vem do Padrão do Observador do sistema interno da
 > Scuadra, onde existe em outras instâncias. Aqui foi reescrito para o contexto
@@ -54,11 +54,11 @@ escuro.
 
 | Onde | O quê |
 |---|---|
-| Dinheiro | Saldo bate com a soma dos lançamentos; total do lote bate com as despesas; valores íntegros em centavos |
-| Estados | Despesa em estado que existe na máquina; aprovada com autor; ressarcida dentro de lote |
-| Referências | Lançamento com conta e categoria; despesa com dono; lote existente |
+| Dinheiro | Saldo da conta bate com a soma dos lançamentos; total do lote bate com os pedidos que o compõem |
+| Situações | Pedido numa situação que existe na máquina; aprovado com autor; atendido dentro de lote |
+| Referências | Lançamento com conta e categoria; orçamento com categoria; pedido apontando para lote existente |
 | Comprovantes | Referência com arquivo no Storage; arquivo sem referência |
-| Fluxo parado | Cadastro esperando; despesa aguardando decisão; aprovada sem pagamento |
+| Fluxo parado | Cadastro aguardando liberação; pedido esperando decisão; aprovado sem pagamento |
 | Duplicidade | Lançamentos idênticos em segundos; orçamento repetido |
 
 ## Fronteiras — inegociáveis

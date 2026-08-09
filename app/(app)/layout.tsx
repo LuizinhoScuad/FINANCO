@@ -1,8 +1,18 @@
 import { requireActiveUser } from "@/lib/auth";
 import { listarUsuarios } from "@/lib/core/repositories/users.repo";
-import { contarPorStatus } from "@/lib/core/repositories/expenses.repo";
+import { contarPedidos } from "@/lib/core/repositories/transactions.repo";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
+
+/** Contador que nunca derruba a página: falhou, vale zero e fica registrado. */
+async function semQuebrar(oQue: string, ler: () => Promise<number> | number): Promise<number> {
+    try {
+        return await ler();
+    } catch (erro) {
+        console.error(`[layout] contador "${oQue}" falhou:`, erro);
+        return 0;
+    }
+}
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
     // Autenticado E liberado. Pendente vai para /aguardando; bloqueado, ao login.
@@ -10,10 +20,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     const isAdmin = usuario.role === "ADMIN";
 
     // Contadores de pendência. Os do administrador só são lidos para ele.
+    //
+    // Este layout embrulha TODAS as telas: uma falha aqui — índice do Firestore
+    // ainda não publicado, por exemplo — derrubaria o app inteiro por causa de
+    // um número ao lado de um item de menu. O badge é conveniência; some em
+    // silêncio (com o motivo no log do servidor) em vez de levar a página junto.
     const [pendentes, aprovacoes, corrigir] = await Promise.all([
-        isAdmin ? listarUsuarios().then((u) => u.filter((x) => x.status === "PENDING").length) : 0,
-        isAdmin ? contarPorStatus("ENVIADA") : 0,
-        contarPorStatus("REJEITADA", usuario.uid),
+        semQuebrar("usuarios pendentes", () =>
+            isAdmin ? listarUsuarios().then((u) => u.filter((x) => x.status === "PENDING").length) : 0,
+        ),
+        semQuebrar("pedidos aguardando", () => (isAdmin ? contarPedidos("ENVIADA") : 0)),
+        semQuebrar("pedidos rejeitados", () => contarPedidos("REJEITADA", usuario.uid)),
     ]);
 
     return (

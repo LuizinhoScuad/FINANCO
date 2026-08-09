@@ -31,6 +31,8 @@ const Lancamento = z.object({
   tags: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   isInstallment: z.coerce.boolean().default(false),
+  /** Pedido de reembolso à empresa. Ausente no formulário = desmarcado. */
+  reembolso: z.coerce.boolean().default(false),
   totalInstallments: z.coerce.number().min(1).optional().nullable(),
   receiptUrl: z.string().url().optional().nullable(),
   /** Identifica o envio: mesmo valor num reenvio acidental (Art. 2). */
@@ -44,8 +46,9 @@ export async function getTransactions(
   year?: number,
   type?: string,
   categoryId?: string,
+  limite?: number,
 ): Promise<LancamentoComRelacoes[]> {
-  return listarLancamentos({ mes: month, ano: year, tipo: type, categoriaId: categoryId });
+  return listarLancamentos({ mes: month, ano: year, tipo: type, categoriaId: categoryId, limite });
 }
 
 export async function getMonthSummary(month: number, year: number) {
@@ -88,6 +91,8 @@ export async function getExpensesByCategoryYear(year: number) {
 function extrair(formData: FormData) {
   const raw = Object.fromEntries(formData) as Record<string, unknown>;
   if (raw.isInstallment === "on") raw.isInstallment = "true";
+  // Caixa desmarcada não é enviada pelo navegador — a ausência é o "false".
+  raw.reembolso = raw.reembolso === "on" || raw.reembolso === "true" ? "true" : "";
   if (raw.receiptUrl === "") delete raw.receiptUrl;
   return raw;
 }
@@ -105,6 +110,7 @@ function paraDados(d: z.infer<typeof Lancamento>): DadosLancamento {
     tags: d.tags ?? null,
     notes: d.notes ?? null,
     receiptUrl: d.receiptUrl ?? null,
+    reembolso: d.reembolso,
   };
 }
 

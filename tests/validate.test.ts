@@ -29,6 +29,50 @@ const arquivoBom = {
   transactions: [lancamentoValido],
 };
 
+describe("backup preserva o pedido de reembolso", () => {
+  const pedidoPago = {
+    ...lancamentoValido,
+    id: "t2",
+    reembolso: true,
+    aprovacao: "RESSARCIDA" as const,
+    approvedBy: "uid-admin",
+    approvedByName: "Luiz",
+    approvedAt: "2026-08-01T12:00:00.000Z",
+    paymentBatchId: "lote1",
+    reimbursedAt: "2026-08-05T12:00:00.000Z",
+  };
+
+  /**
+   * `z.object` descarta campo que não conhece. Sem os campos declarados no
+   * schema, restaurar um backup transformaria todo pedido já pago em
+   * lançamento particular — apagando o rastro do pagamento.
+   */
+  it("não perde os campos de aprovação ao validar", () => {
+    const r = ArquivoDeBackup.safeParse({ ...arquivoBom, transactions: [pedidoPago] });
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+
+    const restaurado = r.data.transactions[0];
+    expect(restaurado.reembolso).toBe(true);
+    expect(restaurado.aprovacao).toBe("RESSARCIDA");
+    expect(restaurado.paymentBatchId).toBe("lote1");
+    expect(restaurado.approvedByName).toBe("Luiz");
+    expect(restaurado.reimbursedAt).toBeTruthy();
+  });
+
+  it("aceita backup antigo, feito antes de existir reembolso", () => {
+    expect(ArquivoDeBackup.safeParse(arquivoBom).success).toBe(true);
+  });
+
+  it("recusa situação de aprovação inventada", () => {
+    const r = ArquivoDeBackup.safeParse({
+      ...arquivoBom,
+      transactions: [{ ...pedidoPago, aprovacao: "PAGA_TALVEZ" }],
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
 describe("schema do arquivo de backup", () => {
   it("aceita um arquivo bem formado", () => {
     expect(ArquivoDeBackup.safeParse(arquivoBom).success).toBe(true);

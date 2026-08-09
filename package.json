@@ -8,8 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "verificar:estrutura": "node scripts/verificar-estrutura.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integracao": "vitest run --config tests/integracao/vitest.config.mts",
+    "test:fumaca": "node tests/integracao/fumaca.mjs",
+    "test:consultas": "node tests/integracao/consultas.mjs",
+    "indices:estado": "node tests/integracao/indices.mjs",
     "scan": "node scripts/scan-financo.mjs",
     "scan:verificar": "node scripts/verificar-guardiao.mjs",
     "backup": "node scripts/backup-dados.mjs"
