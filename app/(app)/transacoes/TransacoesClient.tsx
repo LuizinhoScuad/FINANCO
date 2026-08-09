@@ -370,7 +370,104 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                         Nenhuma transação encontrada.
                     </p>
                 ) : (
-                    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <>
+                    {/* Celular: cada lançamento vira um cartão que cabe na tela.
+                        A tabela larga, mesmo com rolagem lateral, escondia mais de
+                        400px de conteúdo — inclusive o valor e a situação. */}
+                    <div className="so-celular cartao-lista">
+                        {filtered.map((tx) => (
+                            <div key={tx.id} className="cartao-item">
+                                <div className="cartao-topo">
+                                    <span className="cartao-titulo">{tx.description}</span>
+                                    <span
+                                        className="cartao-valor"
+                                        style={{ color: tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}
+                                    >
+                                        {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                    </span>
+                                </div>
+
+                                <div className="cartao-meta">
+                                    <span>{formatDate(tx.date)}</span>
+                                    <span>{tx.category.icon} {tx.category.name}</span>
+                                    <span>{tx.account.name}</span>
+                                    {tx.isInstallment && <span>parcela {tx.installment}/{tx.totalInstallments}</span>}
+                                    {tx.payee && <span style={{ color: "var(--color-accent)" }}>{tx.payee}</span>}
+                                </div>
+
+                                {tx.aprovacao === "REJEITADA" && tx.rejectionReason && (
+                                    <div style={{ fontSize: "0.72rem", color: "var(--color-danger)" }}>
+                                        Rejeitada: {tx.rejectionReason} — corrija e salve para reenviar.
+                                    </div>
+                                )}
+
+                                <div className="cartao-acoes">
+                                    <button
+                                        onClick={() => handleToggleStatus(tx.id)}
+                                        disabled={isPending}
+                                        style={{
+                                            backgroundColor: tx.status === "COMPLETED" ? "rgba(0, 217, 139, 0.1)" : "rgba(255, 193, 7, 0.1)",
+                                            color: tx.status === "COMPLETED" ? "var(--color-accent)" : "#ffc107",
+                                            border: `1px solid ${tx.status === "COMPLETED" ? "rgba(0, 217, 139, 0.25)" : "rgba(255, 193, 7, 0.25)"}`,
+                                            borderRadius: "4px",
+                                            padding: "4px 10px",
+                                            fontSize: "0.68rem",
+                                            fontWeight: 700,
+                                        }}
+                                    >
+                                        {tx.status === "COMPLETED" ? "PAGO" : "PENDENTE"}
+                                    </button>
+
+                                    {tx.reembolso && (
+                                        <span
+                                            style={{
+                                                fontSize: "0.68rem",
+                                                fontWeight: 700,
+                                                padding: "4px 10px",
+                                                borderRadius: "4px",
+                                                color: corDoStatus(tx.aprovacao).cor,
+                                                backgroundColor: corDoStatus(tx.aprovacao).fundo,
+                                            }}
+                                        >
+                                            {rotuloCurto(tx.aprovacao)}
+                                        </span>
+                                    )}
+
+                                    {tx.receiptUrl ? (
+                                        <a
+                                            href={tx.receiptUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ fontSize: "0.72rem", color: "var(--color-accent)", textDecoration: "none", alignSelf: "center" }}
+                                        >
+                                            🧾 recibo
+                                        </a>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            disabled={attachingId === tx.id}
+                                            onClick={() => { setAttachingId(tx.id); attachRef.current?.click(); }}
+                                            style={{ background: "none", border: "1px dashed var(--color-muted)", borderRadius: "4px", padding: "4px 10px", color: "var(--color-muted)", fontSize: "0.68rem" }}
+                                        >
+                                            {attachingId === tx.id ? "enviando..." : "+ recibo"}
+                                        </button>
+                                    )}
+
+                                    <button
+                                        className="btn btn-danger"
+                                        onClick={() => handleDelete(tx.id)}
+                                        disabled={isPending}
+                                        style={{ padding: "4px 10px", fontSize: "0.68rem", marginLeft: "auto" }}
+                                    >
+                                        Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Computador: a tabela, onde há largura para ela. */}
+                    <div className="so-computador" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
                     <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ backgroundColor: "var(--color-surface-2)", borderBottom: "1px solid var(--color-border)" }}>
@@ -512,6 +609,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                         </tbody>
                     </table>
                     </div>
+                    </>
                 )}
             </div>
 

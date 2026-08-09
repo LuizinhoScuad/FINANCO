@@ -209,7 +209,74 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
             Nenhum pedido de reembolso no período. Marque “Pedir reembolso” ao lançar em Transações.
           </p>
         ) : (
-          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <>
+          {/* Celular: cartão por pedido. A tabela escondia de lado justamente a
+              coluna que mais importa aqui — a situação e o valor. */}
+          <div className="so-celular cartao-lista">
+            {pedidos.map((p) => {
+              const atendido = jaAtendido(p.aprovacao);
+              return (
+                <div key={`m-${p.userId}-${p.id}`} className="cartao-item" style={{ opacity: atendido ? 0.75 : 1 }}>
+                  <div className="cartao-topo">
+                    <span className="cartao-titulo">{p.description}</span>
+                    <span
+                      className="cartao-valor"
+                      style={{
+                        textDecoration: atendido ? "line-through" : "none",
+                        color: atendido ? "var(--color-muted)" : "inherit",
+                      }}
+                    >
+                      {formatCurrency(p.amount)}
+                    </span>
+                  </div>
+
+                  <div className="cartao-meta">
+                    <span>{formatDate(p.date)}</span>
+                    {isAdmin && <span>{p.userName}</span>}
+                    <span>{p.categoryName}</span>
+                  </div>
+
+                  {p.aprovacao === "REJEITADA" && p.rejectionReason && (
+                    <div style={{ fontSize: "0.72rem", color: "var(--color-danger)" }}>
+                      Motivo: {p.rejectionReason}
+                    </div>
+                  )}
+
+                  <div className="cartao-acoes">
+                    <span
+                      style={{
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        padding: "4px 10px",
+                        borderRadius: "4px",
+                        color: corDoStatus(p.aprovacao).cor,
+                        backgroundColor: corDoStatus(p.aprovacao).fundo,
+                      }}
+                    >
+                      {rotuloCurto(p.aprovacao)}
+                      {atendido && p.reimbursedAt && ` · pago em ${formatDate(p.reimbursedAt)}`}
+                    </span>
+
+                    {p.receiptUrl ? (
+                      <a
+                        href={p.receiptUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: "0.72rem", color: "var(--color-accent)", textDecoration: "none", alignSelf: "center" }}
+                      >
+                        🧾 ver comprovante
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: "0.7rem", color: "#ffc107", alignSelf: "center" }}>sem comprovante</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Computador: a tabela. */}
+          <div className="so-computador" style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
             <table style={{ width: "100%", minWidth: "760px", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--color-surface-2)", borderBottom: "1px solid var(--color-border)" }}>
@@ -265,6 +332,7 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

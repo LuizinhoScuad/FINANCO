@@ -63,6 +63,22 @@
 
 **Verificação:** estrutura íntegra · 43 testes unitários · 15 de integração contra o Firestore real · fumaça autenticada em 8 telas com isolamento entre pessoas confirmado · filtro de período conferido no servidor · typecheck, lint e build verdes · Guardião provado como somente-leitura · zero resíduo `zzz-teste-*` no banco.
 
+**Correção pós-deploy — responsividade no celular (20:45):**
+
+Relato do Luiz: "a tela no celular fica sambando nas laterais". Medido com
+Playwright em 375px e 393px, contra produção: a **página** não transbordava, mas
+Transações e Relatórios escondiam **~400px de conteúdo** atrás de rolagem lateral
+— a tabela tinha largura mínima de 700–760px dentro de um contêiner rolável.
+Some justamente o valor e a situação do pedido.
+
+Correção: abaixo de 768px a tabela dá lugar a **cartões empilhados** (um por
+lançamento), com utilitários `.so-computador` / `.so-celular` e as classes
+`.cartao-*` em `app/globals.css`. Medido de novo: zero transbordo e zero
+rolagem lateral nas 9 telas, nos dois aparelhos.
+
+Novos no harness: `tests/integracao/responsivo.mjs` (mede e aponta o elemento
+culpado) e `tests/integracao/capturar-celular.mjs` (fotografa as telas).
+
 **Pendências / próximos passos:**
 - O admin aprova os próprios pedidos (só existe um administrador) — comportamento pedido, registrado para não parecer descuido.
 - Promover alguém a ADMIN dá acesso aos lançamentos particulares de todos, inclusive os do Luiz. O aviso na tela diz isso.

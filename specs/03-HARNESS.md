@@ -120,6 +120,8 @@ Se algo escapar: `node scripts/limpar-residuo-teste.mjs`.
 | `npm run test:integracao` | O ciclo real contra o Firestore |
 | `npm run test:fumaca` | As telas carregam autenticadas, e o isolamento entre pessoas vale |
 | `npm run test:consultas` | Toda consulta tem índice publicado |
+| `node tests/integracao/responsivo.mjs` | Nenhuma tela transborda nem exige arrastar de lado no celular |
+| `node tests/integracao/capturar-celular.mjs` | Fotografa as telas num viewport de celular |
 | `npm run scan:verificar` | O Guardião não escreve (Art. 9) |
 | `npm run scan` | Integridade dos dados reais |
 
