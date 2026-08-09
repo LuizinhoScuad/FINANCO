@@ -46,6 +46,7 @@ type TransactionRecord = {
   installment: number | null;
   totalInstallments: number | null;
   notes: string | null;
+  receiptUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -134,6 +135,7 @@ function toTransaction(id: string, data: Record<string, unknown>): TransactionRe
     installment: data.installment == null ? null : Number(data.installment),
     totalInstallments: data.totalInstallments == null ? null : Number(data.totalInstallments),
     notes: data.notes ? String(data.notes) : null,
+    receiptUrl: data.receiptUrl ? String(data.receiptUrl) : null,
     createdAt: normalizeDate(data.createdAt as Date | Timestamp | string | undefined),
     updatedAt: normalizeDate(data.updatedAt as Date | Timestamp | string | undefined),
   };

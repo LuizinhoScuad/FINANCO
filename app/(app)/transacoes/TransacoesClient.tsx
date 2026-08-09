@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createTransaction, deleteTransaction, toggleTransactionStatus, getTransactions } from "@/actions/transactions";
+import { createTransaction, deleteTransaction, toggleTransactionStatus, getTransactions, attachReceipt } from "@/actions/transactions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Account, Category, Transaction } from "@/types";
 import * as XLSX from "xlsx";
+
+function toInputDate(br: string) {
+    const parts = br.split("/");
+    if (parts[0].length === 4) return `${parts[0]}-${parts[1]}-${parts[2]}`; // YYYY/MM/DD
+    const [d, m, y] = parts;
+    return `${y}-${m}-${d}`; // DD/MM/YYYY
+}
 
 
 type TxWithRels = Transaction & { account: Account; category: Category };
@@ -27,6 +34,107 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const [filterType, setFilterType] = useState("all");
     const [txType, setTxType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
     const [repeat, setRepeat] = useState(false);
+    const [ocrLoading, setOcrLoading] = useState(false);
+    const [ocrStatus, setOcrStatus] = useState("");
+    const [ocrDesc, setOcrDesc] = useState("");
+    const [ocrAmount, setOcrAmount] = useState("");
+    const [ocrDate, setOcrDate] = useState(new Date().toISOString().split("T")[0]);
+    const [receiptUrl, setReceiptUrl] = useState("");
+    const [receiptPreview, setReceiptPreview] = useState("");
+    const cameraRef = useRef<HTMLInputElement>(null);
+    const attachRef = useRef<HTMLInputElement>(null);
+    const [attachingId, setAttachingId] = useState<string | null>(null);
+
+    async function handleOCR(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setOcrLoading(true);
+        setOcrStatus("Enviando recibo...");
+        setReceiptPreview(URL.createObjectURL(file));
+        if (cameraRef.current) cameraRef.current.value = "";
+
+        // 1. Upload com timeout de 30s
+        let url = "";
+        try {
+            const { uploadReceipt } = await import("@/lib/firebase-storage");
+            const uploadTimeout = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("timeout")), 30000)
+            );
+            url = await Promise.race([uploadReceipt(file), uploadTimeout]);
+            setReceiptUrl(url);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error("[uploadReceipt] falhou:", msg);
+            setOcrStatus(`⚠️ Recibo não salvo: ${msg}`);
+            setOcrLoading(false);
+            return;
+        }
+        setOcrStatus("Lendo recibo...");
+
+        // 2. OCR com timeout de 20s — opcional, falha silenciosa
+        try {
+            const { createWorker } = await import("tesseract.js");
+
+            const ocr = createWorker("por").then(async (worker) => {
+                const result = await worker.recognize(file);
+                await worker.terminate();
+                return result.data.text;
+            });
+
+            const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 20000));
+            const text = await Promise.race([ocr, timeout]);
+
+            if (text) {
+                // Valor: "R$ 1.234,56" | "1.234,56" | "TOTAL 12,50" | "VALOR: 99,90"
+                const valorMatch =
+                    text.match(/R\$\s*([\d.,]+)/i)?.[1] ??
+                    text.match(/(?:TOTAL|VALOR|PAGO|PAGAR)[^\d]*([\d.,]+)/i)?.[1] ??
+                    text.match(/(?:^|\s)([\d]{1,3}(?:\.\d{3})*,\d{2})(?:\s|$)/m)?.[1];
+                const valor = valorMatch?.replace(/\./g, "").replace(",", ".");
+
+                // Data: "10/04/2026" | "10-04-2026" | "2026-04-10"
+                const dataMatch =
+                    text.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/)?.[1] ??
+                    text.match(/(\d{4}[\/\-]\d{2}[\/\-]\d{2})/)?.[1];
+                const data = dataMatch?.replace(/-/g, "/");
+
+                // Descrição: primeira linha não-vazia com mais de 3 chars, sem ser só números
+                const descricao =
+                    text.split("\n")
+                        .map((l) => l.trim())
+                        .find((l) => l.length > 3 && /[a-zA-ZÀ-ú]/.test(l)) ?? "";
+
+                if (valor) setOcrAmount(valor);
+                if (data) setOcrDate(toInputDate(data));
+                if (descricao) setOcrDesc(descricao.slice(0, 60));
+                setOcrStatus("✓ Recibo lido");
+            } else {
+                setOcrStatus("✓ Recibo salvo — preencha os campos manualmente");
+            }
+        } catch {
+            setOcrStatus("✓ Recibo salvo — preencha os campos manualmente");
+        } finally {
+            setOcrLoading(false);
+        }
+    }
+
+    async function handleAttachReceipt(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        if (!file || !attachingId) return;
+        if (attachRef.current) attachRef.current.value = "";
+
+        try {
+            const { uploadReceipt } = await import("@/lib/firebase-storage");
+            const url = await uploadReceipt(file);
+            await attachReceipt(attachingId, url);
+            router.refresh();
+        } catch (err) {
+            alert("Erro ao vincular recibo: " + (err instanceof Error ? err.message : String(err)));
+        } finally {
+            setAttachingId(null);
+        }
+    }
 
     function handleMonthChange(delta: number) {
         let m = month + delta;
@@ -48,6 +156,12 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             } else {
                 setShowForm(false);
                 setRepeat(false);
+                setOcrDesc("");
+                setOcrAmount("");
+                setOcrDate(new Date().toISOString().split("T")[0]);
+                setReceiptUrl("");
+                setReceiptPreview("");
+                setOcrStatus("");
                 router.refresh();
             }
         });
@@ -174,7 +288,8 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                         Nenhuma transação encontrada.
                     </p>
                 ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                    <table style={{ width: "100%", minWidth: "700px", borderCollapse: "collapse" }}>
                         <thead>
                             <tr style={{ backgroundColor: "var(--color-surface-2)", borderBottom: "1px solid var(--color-border)" }}>
                                 {["Status", "Descrição / Favorecido", "Categoria", "Conta", "Data", "Valor", ""].map((h) => (
@@ -224,12 +339,45 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                 </span>
                                             )}
                                         </div>
-                                        {(tx.payee || tx.tags) && (
-                                            <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem" }}>
-                                                {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
-                                                {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
-                                            </div>
-                                        )}
+                                        <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                                            {tx.payee && <span style={{ color: "var(--color-accent)" }}>@{tx.payee}</span>}
+                                            {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
+                                            {tx.receiptUrl ? (
+                                                <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                                                    <a href={tx.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", textDecoration: "none" }}>
+                                                        🧾 recibo
+                                                    </a>
+                                                    <a
+                                                        href={tx.receiptUrl}
+                                                        download
+                                                        onClick={async (e) => {
+                                                            e.preventDefault();
+                                                            const res = await fetch(tx.receiptUrl!);
+                                                            const blob = await res.blob();
+                                                            const url = URL.createObjectURL(blob);
+                                                            const a = document.createElement("a");
+                                                            a.href = url;
+                                                            a.download = `recibo-${tx.id}.${blob.type.split("/")[1] || "jpg"}`;
+                                                            a.click();
+                                                            URL.revokeObjectURL(url);
+                                                        }}
+                                                        style={{ color: "var(--color-muted)", textDecoration: "none", fontSize: "0.75rem" }}
+                                                        title="Baixar recibo"
+                                                    >
+                                                        ↓
+                                                    </a>
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    disabled={attachingId === tx.id}
+                                                    onClick={() => { setAttachingId(tx.id); attachRef.current?.click(); }}
+                                                    style={{ background: "none", border: "1px dashed var(--color-muted)", borderRadius: "3px", padding: "1px 6px", cursor: "pointer", color: "var(--color-muted)", fontSize: "0.65rem", lineHeight: 1.4 }}
+                                                >
+                                                    {attachingId === tx.id ? "enviando..." : "+ recibo"}
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                     <td style={{ padding: "0.75rem 1rem", color: "var(--color-muted)" }}>
                                         {tx.category.icon} {tx.category.name}
@@ -253,8 +401,19 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 )}
             </div>
+
+            {/* Input oculto global para vincular recibo a transação existente */}
+            <input
+                ref={attachRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: "none" }}
+                onChange={handleAttachReceipt}
+            />
 
             {/* Modal Form */}
             {showForm && (
@@ -303,20 +462,77 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                         name="date"
                                         type="date"
                                         className="input-base"
-                                        defaultValue={new Date().toISOString().split("T")[0]}
+                                        value={ocrDate}
+                                        onChange={(e) => setOcrDate(e.target.value)}
                                         required
                                     />
                                 </div>
                             </div>
 
+                            {/* Botão OCR */}
+                            <div>
+                                <input
+                                    ref={cameraRef}
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    style={{ display: "none" }}
+                                    onChange={handleOCR}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={() => cameraRef.current?.click()}
+                                    disabled={ocrLoading}
+                                    style={{ width: "100%", fontSize: "0.85rem", borderStyle: "dashed", color: ocrLoading ? "var(--color-muted)" : "var(--color-accent)", borderColor: "var(--color-accent)" }}
+                                >
+                                    {ocrLoading ? `⏳ ${ocrStatus}` : "📷 Escanear Recibo (OCR)"}
+                                </button>
+
+                                {/* Preview da imagem + campo hidden com URL */}
+                                {receiptPreview && (
+                                    <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                                        <a href={receiptUrl || receiptPreview} target="_blank" rel="noopener noreferrer">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={receiptPreview}
+                                                alt="Recibo"
+                                                style={{ width: "64px", height: "64px", objectFit: "cover", borderRadius: "4px", border: "1px solid var(--color-border)" }}
+                                            />
+                                        </a>
+                                        <span style={{ fontSize: "0.75rem", color: ocrStatus.startsWith("⚠️") ? "var(--color-danger)" : receiptUrl ? "var(--color-accent)" : "var(--color-muted)" }}>
+                                            {ocrStatus || (receiptUrl ? "✓ Recibo salvo" : "⏳ Enviando...")}
+                                        </span>
+                                        <input type="hidden" name="receiptUrl" value={receiptUrl} />
+                                    </div>
+                                )}
+                            </div>
+
                             <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label className="label-sm">Descrição</label>
-                                    <input name="description" className="input-base" placeholder="Ex: Aluguel" required />
+                                    <input
+                                        name="description"
+                                        className="input-base"
+                                        placeholder="Ex: Aluguel"
+                                        value={ocrDesc}
+                                        onChange={(e) => setOcrDesc(e.target.value)}
+                                        required
+                                    />
                                 </div>
                                 <div>
                                     <label className="label-sm">Valor (R$)</label>
-                                    <input name="amount" type="number" step="0.01" min="0.01" className="input-base" placeholder="0,00" required />
+                                    <input
+                                        name="amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        className="input-base"
+                                        placeholder="0,00"
+                                        value={ocrAmount}
+                                        onChange={(e) => setOcrAmount(e.target.value)}
+                                        required
+                                    />
                                 </div>
                             </div>
 
@@ -392,8 +608,8 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
 
                             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary" disabled={isPending}>
-                                    {isPending ? "Salvando..." : "Finalizar Lançamento"}
+                                <button type="submit" className="btn btn-primary" disabled={isPending || ocrLoading}>
+                                    {isPending ? "Salvando..." : ocrLoading ? "⏳ Aguarde o recibo..." : "Finalizar Lançamento"}
                                 </button>
                             </div>
                         </form>

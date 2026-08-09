@@ -1,4 +1,4 @@
-import { getMonthSummary, getMonthlyHistory, getForecastHistory, getExpensesByCategory, getTransactions } from "@/actions/transactions";
+import { getMonthSummary, getMonthlyHistory, getForecastHistory, getExpensesByCategory, getExpensesByCategoryYear, getTransactions } from "@/actions/transactions";
 import { getTotalBalance } from "@/actions/accounts";
 import { formatCurrency, formatDate, currentMonth } from "@/lib/utils";
 import { MonthlyBarChart } from "@/components/charts/MonthlyBarChart";
@@ -8,12 +8,13 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
     const { month, year } = currentMonth();
-    const [summary, totalBalance, history, forecast, byCategory, recentTxs] = await Promise.all([
+    const [summary, totalBalance, history, forecast, byCategory, byCategoryYear, recentTxs] = await Promise.all([
         getMonthSummary(month, year),
         getTotalBalance(),
         getMonthlyHistory(6),
         getForecastHistory(3),
         getExpensesByCategory(month, year),
+        getExpensesByCategoryYear(year),
         getTransactions(month, year),
     ]);
 
@@ -71,13 +72,8 @@ export default async function DashboardPage() {
 
             {/* Charts */}
             <div
-                className="animate-fade-up"
-                style={{
-                    display: "grid",
-                    gridTemplateColumns: "2fr 1fr",
-                    gap: "1rem",
-                    animationDelay: "0.1s",
-                }}
+                className="animate-fade-up charts-grid"
+                style={{ animationDelay: "0.1s" }}
             >
                 <div className="card">
                     <h2 style={{ fontSize: "0.9rem", marginBottom: "1rem", color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -91,6 +87,36 @@ export default async function DashboardPage() {
                     </h2>
                     <CategoryPieChart data={byCategory} />
                 </div>
+            </div>
+
+            {/* Expenses by Category — Year */}
+            <div className="card animate-fade-up" style={{ animationDelay: "0.13s" }}>
+                <h2 style={{ fontSize: "0.9rem", marginBottom: "1rem", color: "var(--color-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Despesas por categoria — {year}
+                </h2>
+                {byCategoryYear.length === 0 ? (
+                    <p style={{ color: "var(--color-muted)", textAlign: "center", padding: "2rem 0" }}>Sem despesas este ano.</p>
+                ) : (
+                    <div style={{ display: "flex", gap: "2rem", alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ flex: "0 0 220px" }}>
+                            <CategoryPieChart data={byCategoryYear} emptyMessage="Sem despesas este ano" />
+                        </div>
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.5rem", minWidth: "180px" }}>
+                            {byCategoryYear.map((entry) => {
+                                const yearTotal = byCategoryYear.reduce((s, e) => s + e.total, 0);
+                                const pct = yearTotal > 0 ? Math.round((entry.total / yearTotal) * 100) : 0;
+                                return (
+                                    <div key={entry.name} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                                        <span style={{ width: "10px", height: "10px", borderRadius: "2px", backgroundColor: entry.color || "#00d98b", flexShrink: 0 }} />
+                                        <span style={{ flex: 1, fontSize: "0.8rem" }}>{entry.name}</span>
+                                        <span style={{ fontSize: "0.8rem", color: "var(--color-muted)", minWidth: "36px", textAlign: "right" }}>{pct}%</span>
+                                        <span style={{ fontSize: "0.8rem", fontWeight: 600, minWidth: "80px", textAlign: "right" }}>{formatCurrency(entry.total)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Recent Transactions */}
@@ -139,6 +165,17 @@ export default async function DashboardPage() {
                     </div>
                 )}
             </div>
+
+            <style>{`
+                .charts-grid {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 1rem;
+                }
+                @media (max-width: 767px) {
+                    .charts-grid { grid-template-columns: 1fr; }
+                }
+            `}</style>
         </div>
     );
 }
