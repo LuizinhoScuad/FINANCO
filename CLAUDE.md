@@ -1,5 +1,37 @@
 # CLAUDE.md — Instruções para o Assistente
 
+## Como este projeto é desenvolvido (SDD)
+
+O Financo segue desenvolvimento guiado por especificação. A ordem é sempre
+**spec antes de código**.
+
+**Documentos de governo** (em `specs/`):
+
+| Arquivo | Papel |
+|---|---|
+| [`specs/00-CONSTITUTION.md`](specs/00-CONSTITUTION.md) | 10 artigos invioláveis — herdados por tudo |
+| [`specs/financo/01-SPEC.md`](specs/financo/01-SPEC.md) | O quê e por quê: requisitos e critérios de aceite |
+| [`specs/financo/02-PLAN.md`](specs/financo/02-PLAN.md) | O como: arquitetura, decisões técnicas, sequência de fases |
+| [`specs/financo/fases/`](specs/financo/fases/) | Um arquivo por fase, autocontido e executável |
+
+**Protocolo de execução de fase.** Para trabalhar numa fase, carregue **apenas**:
+
+```
+specs/00-CONSTITUTION.md  +  specs/financo/01-SPEC.md  +  specs/financo/fases/FASE-N-*.md
+```
+
+Cada arquivo de fase declara a lista fechada do que ler. Não abra mais do que
+ele pede — é isso que mantém a sessão dentro do contexto.
+
+**Toda fase abre** com árvore de trabalho limpa e **fecha** com typecheck e
+build verdes, critérios de aceite verificados de fato e commit feito. O que não
+pôde ser verificado é declarado como não verificado (Art. 3), nunca presumido.
+
+**Regra de camada:** tela e rota nunca falam com o banco direto — sempre
+`tela → action → lib/core + lib/guardrails → banco`.
+
+---
+
 ## Gatilhos de Finalização de Sessão
 
 Quando o usuário disser **"salva tudo"**, **"grava tudo"**, **"finaliza"**, **"faz o deploy"** ou expressões equivalentes (ex: "pode salvar", "commita tudo", "manda pro GitHub", "sobe pro ar"), execute **obrigatoriamente** os passos abaixo na ordem:

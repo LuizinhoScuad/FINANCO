@@ -52,4 +52,5 @@ tmp_*.mjs
 RECIBO.*
 
 # saídas do guardião — contêm dados financeiros reais (LGPD)
-/outputs/relatorios/
+/outputs/relatorios/*
+!/outputs/relatorios/.gitkeep
