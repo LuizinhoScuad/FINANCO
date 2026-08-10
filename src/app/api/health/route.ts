@@ -42,6 +42,9 @@ export async function GET() {
       },
     },
     projectId: process.env.GCLOUD_PROJECT ?? process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? null,
+    // Identidade do build que está respondendo — é o que permite afirmar que um
+    // deploy subiu, em vez de presumir pelo horário (ver next.config.ts).
+    build: process.env.CARIMBO_DE_BUILD ?? "desconhecido",
     latencyMs: Date.now() - startedAt,
   };
 
