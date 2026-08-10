@@ -102,6 +102,38 @@ Um defeito real apareceu na mudança e foi corrigido: `guardiao/verificar.mjs`
 apontava para o caminho antigo do scan e quebrou — a prova do Art. 9 estava
 morta. Só apareceu porque a bateria foi rodada de novo depois de mover.
 
+**Terceira rodada — raiz esvaziada até o osso (21:20):**
+
+Reclamação repetida: os arquivos da raiz também têm de ir para pastas. Em vez de
+explicar de novo, cada arquivo foi **testado**: quem sobreviveu ao teste, saiu.
+
+Saíram, com prova:
+- `app/ lib/ actions/ components/ types/ middleware.ts` → **`src/`** (convenção
+  do Next). Alias `@/*` repontado, `tsconfig.include` reescrito, alias dos dois
+  configs de vitest ajustado. Build verde com as 16 rotas.
+- `eslint.config.mjs` → `config/` (com `--config` no script; lint roda)
+- `.env.example` → `config/env.example` (nada o lê; sem ponto, não cai no `.env*`)
+- `README.md` → `docs/` (o GitHub lê README de `docs/`)
+- `vitest.config.mts` → `tests/` (com `root` explícito, senão o include some)
+
+Devolvido depois de medir: **`postcss.config.mjs`**. Em `config/`, o CSS gerado
+caiu de 9.998 para 4.198 bytes e saiu com `@theme{` cru — o Tailwind deixou de
+processar. Voltou para a raiz.
+
+Ficaram na raiz, cada um por um motivo técnico documentado no HARNESS §2:
+`package.json`, `package-lock.json`, `next.config.ts`, `next-env.d.ts`,
+`tsconfig.json`, `postcss.config.mjs`, `firebase.json`, `.firebaserc`,
+`apphosting.yaml`, `.env`, `.gitignore`, `CLAUDE.md`. De 15 arquivos e 13 pastas
+para 12 arquivos e 9 pastas.
+
+Percalço: o move falhou no meio porque o servidor de desenvolvimento segurava
+`app/`, `lib/` e `components/` no Windows. Parar o node e limpar `.next` resolveu
+— fica o registro para a próxima vez.
+
+O `verificar-estrutura` foi ensinado a cobrar a estrutura nova (código em `src/`,
+pasta `config/`) e teve um defeito próprio corrigido: lia nomes de arquivo de
+qualquer tabela do HARNESS, não só a do §4, e cobrava scripts inexistentes.
+
 **Pendências / próximos passos:**
 - O admin aprova os próprios pedidos (só existe um administrador) — comportamento pedido, registrado para não parecer descuido.
 - Promover alguém a ADMIN dá acesso aos lançamentos particulares de todos, inclusive os do Luiz. O aviso na tela diz isso.

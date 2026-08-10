@@ -3,13 +3,20 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Os testes cobrem função pura — aritmética de dinheiro, máquina de estados e
+ * Portão rápido: função pura — aritmética de dinheiro, máquina de estados e
  * validação. Nada aqui toca banco ou rede, então roda em milissegundos e pode
  * ser portão de integração sem incomodar ninguém (Art. 7).
  *
  * Os que tocam banco vivem em `tests/integracao/`, com config própria.
+ *
+ * `root` é declarado de propósito: como este arquivo não está mais na raiz do
+ * repositório, sem isso o vitest resolveria `include` a partir de `tests/` e
+ * não acharia nada.
  */
+const RAIZ = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
+
 export default defineConfig({
+  root: RAIZ,
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],
@@ -19,6 +26,7 @@ export default defineConfig({
     reporters: ["default"],
   },
   resolve: {
-    alias: { "@": resolve(fileURLToPath(new URL(".", import.meta.url))) },
+    // O código-fonte mora em src/ (convenção do Next), e o alias segue junto.
+    alias: { "@": resolve(RAIZ, "src") },
   },
 });

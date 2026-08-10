@@ -29,21 +29,33 @@ const avisar = (regra, detalhe) => avisos.push({ regra, detalhe });
 const RAIZ_PERMITIDA = new Set([
   // exigência de ferramenta (ver HARNESS §2)
   "package.json", "package-lock.json",
-  "next.config.ts", "next-env.d.ts", "middleware.ts",
-  "tsconfig.json", "eslint.config.mjs", "postcss.config.mjs", "vitest.config.mts",
+  "next.config.ts", "next-env.d.ts",
+  "tsconfig.json", "postcss.config.mjs",
   "firebase.json", ".firebaserc", "apphosting.yaml",
-  ".gitignore", ".env", ".env.example",
-  // porta de entrada humana
-  "README.md", "CLAUDE.md",
+  ".gitignore", ".env",
+  // carregado automaticamente pelo assistente a partir da raiz
+  "CLAUDE.md",
   // artefatos locais, já ignorados pelo git
   "tsconfig.tsbuildinfo",
 ]);
 
 const PASTAS_PERMITIDAS = new Set([
   ".git", ".github", ".claude", ".next", "node_modules",
-  "actions", "app", "components", "docs", "firebase", "lib",
-  "outputs", "public", "scripts", "specs", "tests", "types",
+  "src",        // todo o código-fonte (convenção do Next)
+  "public",     // estáticos — o Next exige na raiz
+  "tests", "scripts", "specs", "docs", "firebase", "outputs",
+  "config",     // o que aceitou sair da raiz: eslint e o modelo de .env
 ]);
+
+// O que precisa estar DENTRO de src/, e não solto na raiz.
+for (const codigo of ["app", "lib", "actions", "components", "types", "middleware.ts"]) {
+  if (existsSync(join(RAIZ, codigo))) {
+    falhar("código em src/", `${codigo} voltou para a raiz — o lugar dele é src/${codigo}`);
+  }
+  if (!existsSync(join(RAIZ, "src", codigo))) {
+    falhar("código em src/", `faltando src/${codigo}`);
+  }
+}
 
 for (const item of readdirSync(RAIZ)) {
   const ehPasta = statSync(join(RAIZ, item)).isDirectory();
@@ -75,7 +87,7 @@ function varrer(pasta, aoAchar) {
   }
 }
 
-for (const pasta of ["scripts", "tests", "lib", "app", "actions", "components"]) {
+for (const pasta of ["scripts", "tests", "src"]) {
   varrer(join(RAIZ, pasta), (caminho, nome) => {
     if (/^tmp[-_]/i.test(nome) || /\.tmp\.[a-z]+$/i.test(nome)) {
       falhar("sem descartáveis", `arquivo temporário versionado: ${relative(RAIZ, caminho)}`);
@@ -111,9 +123,9 @@ if (existsSync(join(RAIZ, "firebase.json"))) {
 
 // --- 4. O portão de teste não pode tocar o banco ------------------------------
 
-const configVitest = readFileSync(join(RAIZ, "vitest.config.mts"), "utf8");
+const configVitest = readFileSync(join(RAIZ, "tests", "vitest.config.mts"), "utf8");
 if (!configVitest.includes("tests/integracao")) {
-  falhar("portão rápido", "vitest.config.mts não exclui tests/integracao — o portão passaria a exigir credencial e a escrever no Firestore real");
+  falhar("portão rápido", "tests/vitest.config.mts não exclui tests/integracao — o portão passaria a exigir credencial e a escrever no Firestore real");
 }
 
 varrer(join(RAIZ, "tests"), (caminho, nome) => {
@@ -162,9 +174,20 @@ varrer(join(RAIZ, "tests", "integracao"), (caminho, nome) => {
 
 const harness = readFileSync(join(RAIZ, "specs", "01-HARNESS.md"), "utf8");
 
-/** Linhas da tabela §4: | `subpasta/arquivo` | papel | escreve? | */
+/**
+ * Linhas da tabela §4: | `subpasta/arquivo` | papel | escreve? |
+ *
+ * A leitura é recortada à seção 4 de propósito: outras seções também citam
+ * nomes de arquivo entre crases, e varrer o documento inteiro fazia o
+ * verificador cobrar scripts que nunca existiram.
+ */
+const secao4 = harness.slice(
+  harness.indexOf("## 4."),
+  harness.indexOf("## 5.") > 0 ? harness.indexOf("## 5.") : undefined,
+);
+
 const declarados = new Map();
-for (const linha of harness.split(/\r?\n/)) {
+for (const linha of secao4.split(/\r?\n/)) {
   const m = linha.match(/^\|\s*`([\w./-]+\.(?:mjs|bat))`\s*\|([^|]*)\|([^|]*)\|/);
   if (m) declarados.set(m[1], { papel: m[2].trim(), escreve: /^sim/i.test(m[3].trim()) });
 }

@@ -27,7 +27,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "server-only": resolve(raiz, "tests/integracao/apoio/server-only.ts"),
-      "@": raiz,
+      // O código-fonte mora em src/.
+      "@": resolve(raiz, "src"),
     },
   },
 });

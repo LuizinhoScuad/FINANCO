@@ -32,18 +32,18 @@ specs/                        GOVERNO — spec antes de código
     02-PLAN.md                o como
     fases/                    uma fase por arquivo, autocontida
 
-app/                          telas e rotas (Next.js App Router)
+src/app/                      telas e rotas (Next.js App Router)
   (app)/                      área autenticada
   api/                        rotas de API
-actions/                      server actions FINAS — só orquestram
-lib/
+src/actions/                  server actions FINAS — só orquestram
+src/lib/
   core/                       regra de negócio e acesso a dados, tipados
     repositories/             uma porta por entidade
     aprovacao.ts · money.ts   funções puras, testáveis sem banco
     exports/                  PDF e XLSX gerados no navegador
   guardrails/                 proteções — Art. 1, 2 e 6
-components/                   componentes de tela reutilizáveis
-types/                        contratos compartilhados
+src/components/               componentes de tela reutilizáveis
+src/types/                    contratos compartilhados
 
 tests/                        PORTÃO — função pura, sem rede (`npm test`)
   *.test.ts                   dinheiro, máquina de estados, validação
@@ -52,12 +52,19 @@ tests/                        PORTÃO — função pura, sem rede (`npm test`)
     sondas/                   verificações de linha de comando (.mjs)
     apoio/                    credenciais e stubs dos testes
 
+src/                          TODO o código-fonte (convenção do Next)
+  app/                        telas e rotas
+  actions/ · lib/ · components/ · types/
+  middleware.ts
+
 scripts/                      ferramentas de linha de comando
   guardiao/                   varredura e a prova de que ela não escreve
   dados/                      backup, migração, simulação, limpeza
   dev/                        estrutura do repositório e atalho local
+config/                       configuração que aceita sair da raiz
 firebase/                     regras e índices versionados
-docs/                         PROGRESSO.md — diário de bordo
+docs/                         README.md e PROGRESSO.md
+public/                       estáticos (o Next exige na raiz)
 outputs/                      saídas do Guardião (relatórios NÃO versionados)
 ```
 
@@ -69,25 +76,34 @@ de interface de reintroduzir uma escrita insegura.
 
 ## 2. O que fica na raiz — e por quê
 
-A raiz parece cheia, e boa parte disso **não é bagunça: é exigência de
-ferramenta.** Mover quebraria o build.
+A raiz foi esvaziada até o osso. **O que sobrou não é bagunça: é o que a
+ferramenta procura num caminho fixo e não aceita em outro lugar.** Cada linha
+abaixo foi testada — quando o teste passou, o arquivo saiu.
 
-| Arquivo | Por que precisa estar na raiz |
+| Arquivo | Por que não sai |
 |---|---|
-| `package.json` · `package-lock.json` | npm resolve dependências a partir daqui |
-| `next.config.ts` · `next-env.d.ts` | convenção do Next.js, não configurável |
-| `middleware.ts` | o Next só reconhece na raiz (ou em `src/`) |
-| `tsconfig.json` | raiz do projeto TypeScript |
-| `eslint.config.mjs` · `postcss.config.mjs` · `vitest.config.mts` | descoberta automática pela ferramenta |
-| `firebase.json` · `.firebaserc` | a CLI do Firebase procura aqui |
-| `apphosting.yaml` | lido pelo Firebase App Hosting no deploy |
-| `.env` · `.env.example` · `.gitignore` | convenção universal |
-| `README.md` · `CLAUDE.md` | porta de entrada humana e do assistente |
+| `package.json` · `package-lock.json` | o npm resolve o projeto a partir daqui; sem isso não há projeto |
+| `next.config.ts` · `next-env.d.ts` | o Next procura só na raiz; o `.d.ts` é gerado por ele |
+| `tsconfig.json` | raiz do projeto TypeScript, e é o que o Next lê |
+| `postcss.config.mjs` | **medido:** em `config/` o CSS caiu de 9.998 para 4.198 bytes e saiu com `@theme{` cru — o Tailwind deixou de processar |
+| `firebase.json` · `.firebaserc` · `apphosting.yaml` | a CLI e o App Hosting leem da raiz; mover obrigaria `--config` em todo comando, o que é armadilha para quem digitar `firebase deploy` |
+| `.env` · `.gitignore` | o Next carrega o `.env` da raiz; o git idem |
+| `CLAUDE.md` | é carregado automaticamente pelo assistente a partir da raiz |
 
-**Tudo o que não está nessa lista tem pasta.** Foi por isso que, em 09/08/2026,
-`firestore.rules`, `firestore.indexes.json` e `storage.rules` foram para
-`firebase/` (com os caminhos atualizados em `firebase.json`) e
-`iniciar_financo.bat` foi para `scripts/`.
+**Saíram, com prova de que continuam funcionando:**
+
+| Foi | Virou | Provado por |
+|---|---|---|
+| `app/` `lib/` `actions/` `components/` `types/` `middleware.ts` | `src/…` | build verde com as 16 rotas |
+| `eslint.config.mjs` | `config/eslint.config.mjs` | `npm run lint` roda |
+| `.env.example` | `config/env.example` | é só modelo, nada o lê |
+| `README.md` | `docs/README.md` | o GitHub lê README de `docs/` |
+| `vitest.config.mts` | `tests/vitest.config.mts` | 43 testes passam |
+| `firestore.rules` · `firestore.indexes.json` · `storage.rules` | `firebase/…` | deploy publicou dos caminhos novos |
+| `iniciar_financo.bat` | `scripts/dev/` | atalho local |
+
+Nada saiu no chute: o `postcss.config.mjs` foi movido, medido, e **devolvido**
+quando a medida mostrou o Tailwind parando de rodar.
 
 O `verificar:estrutura` falha se aparecer arquivo novo solto na raiz. Se for
 legítimo, adicione-o à lista permitida **no script** — o gesto de editar a lista
