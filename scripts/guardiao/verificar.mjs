@@ -1,7 +1,7 @@
 /**
  * verificar-guardiao.mjs — prova que o Guardião não escreve.
  *
- * O `scan-financo.mjs` roda com credencial de administrador, que ignora as
+ * O `guardiao/scan.mjs` roda com credencial de administrador, que ignora as
  * regras de segurança. A única garantia real de que ele apenas observa (Art. 9)
  * é não conter nenhuma chamada de escrita — e isso precisa ser verificado por
  * máquina, não por confiança.
@@ -16,9 +16,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
+const raiz = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-const ALVOS = ["scripts/scan-financo.mjs"];
+const ALVOS = ["scripts/guardiao/scan.mjs"];
 
 const METODOS_ESCRITA = ["set", "update", "delete", "add", "create", "commit", "save", "remove"];
 

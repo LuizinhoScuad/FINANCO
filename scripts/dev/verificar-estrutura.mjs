@@ -1,5 +1,5 @@
 /**
- * verificar-estrutura.mjs — faz valer o `specs/03-HARNESS.md`.
+ * verificar-estrutura.mjs — faz valer o `specs/01-HARNESS.md`.
  *
  * Regra escrita e não verificada é decoração. Este script transforma cada regra
  * de organização do repositório num portão que falha em voz alta.
@@ -13,7 +13,7 @@ import { readdirSync, existsSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 
-const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
+const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const problemas = [];
 const avisos = [];
@@ -129,6 +129,14 @@ varrer(join(RAIZ, "tests"), (caminho, nome) => {
   }
 });
 
+// --- 4b. Sonda de linha de comando mora em sondas/ ---------------------------
+
+for (const item of readdirSync(join(RAIZ, "tests", "integracao"))) {
+  if (item.endsWith(".mjs")) {
+    falhar("sondas organizadas", `tests/integracao/${item} está solto — sondas .mjs moram em tests/integracao/sondas/`);
+  }
+}
+
 // --- 5. Semeadura de teste tem prefixo reconhecível ---------------------------
 //
 // Sem o prefixo, resíduo esquecido vira usuário fantasma no painel do admin —
@@ -152,20 +160,40 @@ varrer(join(RAIZ, "tests", "integracao"), (caminho, nome) => {
 // alguém tenha escrito, em português, o que ele faz e se escreve no banco. Um
 // script que ninguém documentou é exatamente o que vira lixo esquecido.
 
-const harness = readFileSync(join(RAIZ, "specs", "03-HARNESS.md"), "utf8");
+const harness = readFileSync(join(RAIZ, "specs", "01-HARNESS.md"), "utf8");
 
-/** Linhas da tabela §4: | `arquivo` | papel | escreve? | */
+/** Linhas da tabela §4: | `subpasta/arquivo` | papel | escreve? | */
 const declarados = new Map();
 for (const linha of harness.split(/\r?\n/)) {
-  const m = linha.match(/^\|\s*`([\w.-]+\.(?:mjs|bat))`\s*\|([^|]*)\|([^|]*)\|/);
+  const m = linha.match(/^\|\s*`([\w./-]+\.(?:mjs|bat))`\s*\|([^|]*)\|([^|]*)\|/);
   if (m) declarados.set(m[1], { papel: m[2].trim(), escreve: /^sim/i.test(m[3].trim()) });
 }
 
-const naPasta = readdirSync(join(RAIZ, "scripts")).filter((n) => /\.(mjs|bat)$/.test(n));
+/**
+ * Nada de script solto: cada um mora numa subpasta com propósito claro.
+ * Nove arquivos misturados numa pasta só era metade da bagunça reclamada.
+ */
+const SUBPASTAS_SCRIPTS = ["guardiao", "dados", "dev"];
+const naPasta = [];
+
+for (const item of readdirSync(join(RAIZ, "scripts"))) {
+  const caminho = join(RAIZ, "scripts", item);
+  if (statSync(caminho).isDirectory()) {
+    if (!SUBPASTAS_SCRIPTS.includes(item)) {
+      falhar("scripts organizados", `subpasta inesperada scripts/${item}/ — use guardiao/, dados/ ou dev/`);
+      continue;
+    }
+    for (const arquivo of readdirSync(caminho)) {
+      if (/\.(mjs|bat)$/.test(arquivo)) naPasta.push(`${item}/${arquivo}`);
+    }
+  } else if (/\.(mjs|bat)$/.test(item)) {
+    falhar("scripts organizados", `scripts/${item} está solto — mova para guardiao/, dados/ ou dev/`);
+  }
+}
 
 for (const nome of naPasta) {
   if (!declarados.has(nome)) {
-    falhar("script declarado", `scripts/${nome} não está na tabela de specs/03-HARNESS.md §4 — documente o que faz e se escreve`);
+    falhar("script declarado", `scripts/${nome} não está na tabela de specs/01-HARNESS.md §4 — documente o que faz e se escreve`);
   }
   if (nome.endsWith(".mjs")) {
     const conteudo = readFileSync(join(RAIZ, "scripts", nome), "utf8");
@@ -174,7 +202,7 @@ for (const nome of naPasta) {
     }
     // Quem se declara escritor precisa oferecer volta (Art. 1).
     const declarado = declarados.get(nome);
-    if (declarado?.escreve && !/--limpar|--desfazer|--aplicar/.test(conteudo) && nome !== "bootstrap-admin.mjs" && nome !== "limpar-residuo-teste.mjs") {
+    if (declarado?.escreve && !/--limpar|--desfazer|--aplicar/.test(conteudo) && !nome.endsWith("bootstrap-admin.mjs") && !nome.endsWith("limpar-residuo-teste.mjs")) {
       falhar("desfazer", `scripts/${nome} escreve no banco sem prévia nem caminho de volta (Art. 1, HARNESS §4)`);
     }
   }
@@ -182,13 +210,13 @@ for (const nome of naPasta) {
 
 for (const nome of declarados.keys()) {
   if (!naPasta.includes(nome)) {
-    falhar("script declarado", `specs/03-HARNESS.md §4 lista scripts/${nome}, que não existe mais — remova a linha`);
+    falhar("script declarado", `specs/01-HARNESS.md §4 lista scripts/${nome}, que não existe mais — remova a linha`);
   }
 }
 
 // --- 7. A prova de que o Guardião não escreve continua no lugar ---------------
 //
-// Quem faz essa verificação é `verificar-guardiao.mjs`, que sabe distinguir
+// Quem faz essa verificação é `guardiao/verificar.mjs`, que sabe distinguir
 // `Map.set()` em memória de escrita no banco. Aqui só se garante que a prova
 // não foi desligada.
 
@@ -196,15 +224,15 @@ const pacote = JSON.parse(readFileSync(join(RAIZ, "package.json"), "utf8"));
 if (!pacote.scripts?.["scan:verificar"]) {
   falhar("Art. 9", "o comando scan:verificar sumiu do package.json — é a prova de que o Guardião não escreve");
 }
-if (!existsSync(join(RAIZ, "scripts", "verificar-guardiao.mjs"))) {
-  falhar("Art. 9", "scripts/verificar-guardiao.mjs sumiu — sem ele nada prova que o Guardião só observa");
+if (!existsSync(join(RAIZ, "scripts", "guardiao", "verificar.mjs"))) {
+  falhar("Art. 9", "scripts/guardiao/verificar.mjs sumiu — sem ele nada prova que o Guardião só observa");
 }
 
 // --- 8. Documentos de governo presentes ---------------------------------------
 
 for (const doc of [
   "specs/00-CONSTITUTION.md",
-  "specs/03-HARNESS.md",
+  "specs/01-HARNESS.md",
   "specs/financo/01-SPEC.md",
   "specs/financo/02-PLAN.md",
   "docs/PROGRESSO.md",
@@ -215,7 +243,7 @@ for (const doc of [
 // --- saída --------------------------------------------------------------------
 
 const linha = "─".repeat(64);
-console.log(`\nVERIFICAÇÃO DE ESTRUTURA — specs/03-HARNESS.md`);
+console.log(`\nVERIFICAÇÃO DE ESTRUTURA — specs/01-HARNESS.md`);
 console.log(linha);
 
 if (avisos.length) {
@@ -230,5 +258,5 @@ if (problemas.length === 0) {
 
 for (const p of problemas) console.log(`  ✗ [${p.regra}] ${p.detalhe}`);
 console.log(linha);
-console.log(`${problemas.length} problema(s) de estrutura. Corrija ou ajuste a regra em specs/03-HARNESS.md.\n`);
+console.log(`${problemas.length} problema(s) de estrutura. Corrija ou ajuste a regra em specs/01-HARNESS.md.\n`);
 process.exit(1);

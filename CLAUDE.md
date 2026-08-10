@@ -10,7 +10,7 @@ O Financo segue desenvolvimento guiado por especificação. A ordem é sempre
 | Arquivo | Papel |
 |---|---|
 | [`specs/00-CONSTITUTION.md`](specs/00-CONSTITUTION.md) | 10 artigos invioláveis — herdados por tudo |
-| [`specs/03-HARNESS.md`](specs/03-HARNESS.md) | **Onde cada coisa mora** e como a sessão abre e fecha — verificável por máquina |
+| [`specs/01-HARNESS.md`](specs/01-HARNESS.md) | **Onde cada coisa mora** e como a sessão abre e fecha — verificável por máquina |
 | [`specs/financo/01-SPEC.md`](specs/financo/01-SPEC.md) | O quê e por quê: requisitos e critérios de aceite |
 | [`specs/financo/02-PLAN.md`](specs/financo/02-PLAN.md) | O como: arquitetura, decisões técnicas, sequência de fases |
 | [`specs/financo/fases/`](specs/financo/fases/) | Um arquivo por fase, autocontido e executável |
@@ -36,7 +36,7 @@ npm test && npm run typecheck && npm run lint && npm run build
 **Regra de camada:** tela e rota nunca falam com o banco direto — sempre
 `tela → action → lib/core + lib/guardrails → banco`.
 
-**Onde colocar arquivo novo:** consulte [`specs/03-HARNESS.md`](specs/03-HARNESS.md)
+**Onde colocar arquivo novo:** consulte [`specs/01-HARNESS.md`](specs/01-HARNESS.md)
 antes de criar qualquer coisa. Nada de arquivo solto na raiz, nada de
 `scripts/tmp/`, nada de script sem estar declarado na tabela do §4. Trabalho
 descartável vive no diretório temporário da sessão, fora do repositório.

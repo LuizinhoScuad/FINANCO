@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 import { GoogleAuth } from "google-auth-library";
 

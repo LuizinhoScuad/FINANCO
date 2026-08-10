@@ -20,7 +20,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 
-const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
+const raiz = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const comoJson = process.argv.includes("--json");
 
 // --- credenciais -------------------------------------------------------------

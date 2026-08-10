@@ -22,7 +22,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-const raiz = join(dirname(fileURLToPath(import.meta.url)), "..");
+const raiz = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 // --- credenciais ------------------------------------------------------------
 

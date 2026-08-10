@@ -25,11 +25,12 @@ e não verificada é decoração; por isso cada regra aqui tem um teste.
 
 ```
 specs/                        GOVERNO — spec antes de código
-  00-CONSTITUTION.md          10 artigos invioláveis
-  03-HARNESS.md               este arquivo
-  financo/01-SPEC.md          o quê e por quê
-  financo/02-PLAN.md          o como
-  financo/fases/              uma fase por arquivo, autocontida
+  00-CONSTITUTION.md          10 artigos invioláveis (vale para tudo)
+  01-HARNESS.md               este arquivo (vale para tudo)
+  financo/                    documentos DO programa
+    01-SPEC.md                o quê e por quê
+    02-PLAN.md                o como
+    fases/                    uma fase por arquivo, autocontida
 
 app/                          telas e rotas (Next.js App Router)
   (app)/                      área autenticada
@@ -45,9 +46,16 @@ components/                   componentes de tela reutilizáveis
 types/                        contratos compartilhados
 
 tests/                        PORTÃO — função pura, sem rede (`npm test`)
+  *.test.ts                   dinheiro, máquina de estados, validação
   integracao/                 FORA do portão — tocam o Firestore real
+    *.test.ts                 ciclo real, rodado pelo vitest
+    sondas/                   verificações de linha de comando (.mjs)
+    apoio/                    credenciais e stubs dos testes
 
 scripts/                      ferramentas de linha de comando
+  guardiao/                   varredura e a prova de que ela não escreve
+  dados/                      backup, migração, simulação, limpeza
+  dev/                        estrutura do repositório e atalho local
 firebase/                     regras e índices versionados
 docs/                         PROGRESSO.md — diário de bordo
 outputs/                      saídas do Guardião (relatórios NÃO versionados)
@@ -120,10 +128,15 @@ Se algo escapar: `node scripts/limpar-residuo-teste.mjs`.
 | `npm run test:integracao` | O ciclo real contra o Firestore |
 | `npm run test:fumaca` | As telas carregam autenticadas, e o isolamento entre pessoas vale |
 | `npm run test:consultas` | Toda consulta tem índice publicado |
-| `node tests/integracao/responsivo.mjs` | Nenhuma tela transborda nem exige arrastar de lado no celular |
-| `node tests/integracao/capturar-celular.mjs` | Fotografa as telas num viewport de celular |
+| `npm run test:responsivo` | Nenhuma tela transborda nem exige arrastar de lado no celular |
+| `npm run capturar:celular` | Fotografa as telas num viewport de celular |
+| `npm run indices:estado` | Estado de construção de cada índice do Firestore |
+| `npm run conferir:backup` | O que mudou no banco desde o último backup |
 | `npm run scan:verificar` | O Guardião não escreve (Art. 9) |
 | `npm run scan` | Integridade dos dados reais |
+
+**Tudo por `npm run`.** Ninguém precisa decorar caminho de script — e mover um
+arquivo de pasta não quebra o hábito de ninguém.
 
 ---
 
@@ -135,15 +148,15 @@ existe**, e — se escreve — **prévia antes de gravar** e caminho de **desfaz
 
 | Script | Papel | Escreve? |
 |---|---|---|
-| `scan-financo.mjs` | Varredura de integridade | Não (verificável por busca textual) |
-| `verificar-guardiao.mjs` | Prova que o Guardião não escreve | Não |
-| `backup-dados.mjs` | Cópia completa antes de operação destrutiva | Não (só lê) |
-| `bootstrap-admin.mjs` | Primeiro administrador | Sim |
-| `migrar-lancamentos-para-reembolso.mjs` | Migração de histórico | Sim — com prévia e `--desfazer` |
-| `simular-reembolso.mjs` | Dados de simulação para testar o fluxo | Sim — com `--limpar` |
-| `limpar-residuo-teste.mjs` | Remove semeadura `zzz-teste-*` esquecida | Sim |
-| `verificar-estrutura.mjs` | Faz valer este documento | Não |
-| `iniciar_financo.bat` | Sobe o app local e abre o navegador | Não |
+| `guardiao/scan.mjs` | Varredura de integridade | Não (verificável por busca textual) |
+| `guardiao/verificar.mjs` | Prova que o Guardião não escreve | Não |
+| `dados/backup.mjs` | Cópia completa antes de operação destrutiva | Não (só lê) |
+| `dados/bootstrap-admin.mjs` | Primeiro administrador | Sim |
+| `dados/migrar-para-reembolso.mjs` | Migração de histórico | Sim — com prévia e `--desfazer` |
+| `dados/simular-reembolso.mjs` | Dados de simulação para testar o fluxo | Sim — com `--limpar` |
+| `dados/limpar-residuo-teste.mjs` | Remove semeadura `zzz-teste-*` esquecida | Sim |
+| `dev/verificar-estrutura.mjs` | Faz valer este documento | Não |
+| `dev/iniciar_financo.bat` | Sobe o app local e abre o navegador | Não |
 
 **Proibido:** `scripts/tmp/`, `tmp_*.mjs`, script de uso único deixado para trás.
 Trabalho descartável vai para o diretório temporário da sessão, fora do

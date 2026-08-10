@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";

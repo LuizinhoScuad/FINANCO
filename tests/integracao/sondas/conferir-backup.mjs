@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const env = {};
 for (const l of readFileSync(join(RAIZ, ".env"), "utf8").split(/\r?\n/)) {
   const m = l.match(/^([A-Z_]+)="?([\s\S]*?)"?$/);

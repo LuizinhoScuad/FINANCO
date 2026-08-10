@@ -79,6 +79,29 @@ rolagem lateral nas 9 telas, nos dois aparelhos.
 Novos no harness: `tests/integracao/responsivo.mjs` (mede e aponta o elemento
 culpado) e `tests/integracao/capturar-celular.mjs` (fotografa as telas).
 
+**Segunda rodada de arrumação (21:10):**
+
+Reclamação: ainda estava bagunçado. Quatro problemas concretos, corrigidos:
+
+1. **Numeração de spec incoerente** — `00` e `03` no topo, `01` e `02` dentro de
+   `financo/`. O HARNESS virou `specs/01-HARNESS.md`: o topo agora é a cadeia
+   global (00 Constituição → 01 Harness) e `financo/` tem a cadeia do programa.
+2. **`scripts/` com 9 arquivos soltos** → `guardiao/` (scan e a prova de que ele
+   não escreve), `dados/` (backup, migração, simulação, limpeza, bootstrap) e
+   `dev/` (estrutura e atalho local).
+3. **`tests/integracao/` misturava** teste de vitest com sonda de linha de
+   comando → as `.mjs` foram para `sondas/`.
+4. **Capturas órfãs** de um script já removido, apagadas.
+
+Tudo virou comando `npm run` — ninguém precisa decorar caminho, e mover arquivo
+não quebra o hábito de ninguém. O `verificar-estrutura` passou a cobrar as
+subpastas novas: falha com script solto em `scripts/`, subpasta fora do padrão,
+ou sonda `.mjs` fora de `sondas/`.
+
+Um defeito real apareceu na mudança e foi corrigido: `guardiao/verificar.mjs`
+apontava para o caminho antigo do scan e quebrou — a prova do Art. 9 estava
+morta. Só apareceu porque a bateria foi rodada de novo depois de mover.
+
 **Pendências / próximos passos:**
 - O admin aprova os próprios pedidos (só existe um administrador) — comportamento pedido, registrado para não parecer descuido.
 - Promover alguém a ADMIN dá acesso aos lançamentos particulares de todos, inclusive os do Luiz. O aviso na tela diz isso.

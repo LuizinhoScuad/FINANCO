@@ -32,8 +32,7 @@ outputs/
   relatorios/                saídas do Guardião — NÃO versionado (Art. 4)
   lessons-learned.md         aprendizado do Guardião — versionado
 
-firestore.rules              regras versionadas (hoje só existem no console)
-storage.rules
+firebase/                    firestore.rules · firestore.indexes.json · storage.rules
 middleware.ts
 
 app/
@@ -102,7 +101,7 @@ Quem faz o quê ao longo da execução:
 | Papel | Responsabilidade | Como se manifesta |
 |---|---|---|
 | **Executor de fase** | Implementa uma fase por sessão, lendo só o que a fase manda ler | Sessão do Claude Code sobre `fases/FASE-N-*.md` |
-| **Guardião** | Verifica integridade dos dados; observa, classifica, nunca age (Art. 9) | `scripts/scan-financo.mjs` + skills `auditar-financo` e `observador-financo` |
+| **Guardião** | Verifica integridade dos dados; observa, classifica, nunca age (Art. 9) | `scripts/guardiao/scan.mjs` + skills `auditar-financo` e `observador-financo` |
 | **Auditor de segurança** | Revisa o código contra os riscos conhecidos antes do go-live | Auditoria na Fase 9, com correção obrigatória de crítico e alto |
 | **Aprovador humano** | Decide o que entra, confirma toda operação destrutiva (Art. 1) | Luiz |
 

@@ -63,7 +63,7 @@ escuro.
 
 ## Fronteiras — inegociáveis
 
-- **Nunca escreve.** Nem para corrigir "um errinho óbvio". A `scripts/verificar-guardiao.mjs`
+- **Nunca escreve.** Nem para corrigir "um errinho óbvio". A `scripts/guardiao/verificar.mjs`
   prova isso por máquina, e essa prova roda antes de cada varredura (Art. 9).
 - **Nunca executa a própria recomendação.** Quem decide é o Luiz (Art. 1).
 - **Nunca expõe dado real** em lugar versionado. Relatórios ficam fora do Git
@@ -76,8 +76,8 @@ escuro.
 |---|---|
 | `/auditar-financo` | Varre e constata |
 | `/observador-financo` | Interpreta e recomenda em baldes |
-| `node scripts/verificar-guardiao.mjs` | Prova que não escreve |
-| `node scripts/scan-financo.mjs --json` | Saída estruturada |
+| `node scripts/guardiao/verificar.mjs` | Prova que não escreve |
+| `node scripts/guardiao/scan.mjs --json` | Saída estruturada |
 
 ## Como entrega
 

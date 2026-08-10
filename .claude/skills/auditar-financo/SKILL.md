@@ -26,7 +26,7 @@ achar nada é o resultado esperado na maior parte das vezes — e está tudo bem
 ### 1. Provar que o Guardião não escreve
 
 ```bash
-node scripts/verificar-guardiao.mjs
+npm run scan:verificar
 ```
 
 Se falhar, **pare e avise**. O script roda com credencial de administrador, que
@@ -36,7 +36,7 @@ observa (Art. 9 da Constituição).
 ### 2. Varrer
 
 ```bash
-node scripts/scan-financo.mjs
+npm run scan
 ```
 
 Sai em texto e grava `outputs/relatorios/scan-AAAA-MM-DD.json`.
