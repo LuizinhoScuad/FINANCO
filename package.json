@@ -23,6 +23,7 @@
     "backup": "node scripts/dados/backup.mjs",
     "migrar:reembolso": "node scripts/dados/migrar-para-reembolso.mjs",
     "simular:reembolso": "node scripts/dados/simular-reembolso.mjs",
+    "corrigir:data": "node scripts/dados/corrigir-data-de-lancamento.mjs",
     "limpar:residuo": "node scripts/dados/limpar-residuo-teste.mjs"
   },
   "dependencies": {

@@ -170,6 +170,7 @@ existe**, e — se escreve — **prévia antes de gravar** e caminho de **desfaz
 | `dados/bootstrap-admin.mjs` | Primeiro administrador | Sim |
 | `dados/migrar-para-reembolso.mjs` | Migração de histórico | Sim — com prévia e `--desfazer` |
 | `dados/simular-reembolso.mjs` | Dados de simulação para testar o fluxo | Sim — com `--limpar` |
+| `dados/corrigir-data-de-lancamento.mjs` | Acerta a data de um lançamento, inclusive já pago | Sim — com prévia e `--desfazer` |
 | `dados/limpar-residuo-teste.mjs` | Remove semeadura `zzz-teste-*` esquecida | Sim |
 | `dev/verificar-estrutura.mjs` | Faz valer este documento | Não |
 | `dev/iniciar_financo.bat` | Sobe o app local e abre o navegador | Não |
