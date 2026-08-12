@@ -74,28 +74,43 @@ const linkAprovacoes = {
   ),
 };
 
+const linkAprovados = {
+  href: "/aprovados",
+  label: "Aprovados",
+  icon: (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" /><path d="M8 12l3 3 5-6" />
+    </svg>
+  ),
+};
+
 export function BottomNav({
   isAdmin = false,
   pendentes = 0,
   aprovacoes = 0,
   corrigir = 0,
+  aPagar = 0,
 }: {
   isAdmin?: boolean;
   pendentes?: number;
   aprovacoes?: number;
   corrigir?: number;
+  aPagar?: number;
 }) {
   const pathname = usePathname();
 
-  // No celular o espaço é curto: cinco alvos de toque é o limite confortável.
-  // Transações e Relatórios entram sempre — é o ciclo inteiro de quem está na
-  // rua: lançar o gasto e depois mandar o relatório pelo WhatsApp.
+  // No celular o espaço é curto. Transações e Relatórios entram sempre — é o
+  // ciclo inteiro de quem está na rua: lançar o gasto e depois mandar o
+  // relatório pelo WhatsApp. Aprovados entra para os dois papéis: para o gestor
+  // é a conta a pagar, para quem gastou é o quanto tem a receber. Nada saiu do
+  // menu: os itens estreitam, e o rótulo não quebra (ver `nav-item` abaixo).
   const itens = isAdmin
-    ? [links[0], links[1], linkRelatorios, linkAprovacoes, { ...linkAprovacoes, href: "/admin/usuarios", label: "Usuários" }]
-    : [links[0], links[1], linkRelatorios, links[2], links[4]];
+    ? [links[0], links[1], linkAprovacoes, linkAprovados, linkRelatorios, { ...linkAprovacoes, href: "/admin/usuarios", label: "Usuários" }]
+    : [links[0], links[1], linkAprovados, linkRelatorios, links[2], links[4]];
 
   const badges: Record<string, number> = {
     "/transacoes": corrigir,
+    "/aprovados": aPagar,
     "/admin/aprovacoes": aprovacoes,
     "/admin/usuarios": pendentes,
   };
@@ -125,7 +140,11 @@ export function BottomNav({
             key={href}
             href={href}
             style={{
-              flex: 1,
+              flex: "1 1 0",
+              // Sem isto o rótulo mais longo empurra a barra além da tela e o
+              // celular ganha rolagem lateral — o que a sonda de responsivo
+              // reprova.
+              minWidth: 0,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
@@ -133,8 +152,10 @@ export function BottomNav({
               gap: "3px",
               textDecoration: "none",
               color: active ? "var(--color-accent)" : "var(--color-muted)",
-              fontSize: "0.6rem",
+              fontSize: itens.length > 5 ? "0.55rem" : "0.6rem",
               fontWeight: active ? 600 : 400,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
               transition: "color 0.15s",
               position: "relative",
             }}

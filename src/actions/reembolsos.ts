@@ -14,6 +14,7 @@ import {
   type FiltroDeReembolso,
 } from "@/lib/core/repositories/transactions.repo";
 import { buscarPerfil, listarUsuarios } from "@/lib/core/repositories/users.repo";
+import { fimDoDia, inicioDoDia, periodo } from "@/lib/core/datas";
 import { traduzirErro } from "@/lib/guardrails/transactions";
 import { fail, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
 import type { PedidoDeReembolso, UserProfile } from "@/types";
@@ -52,10 +53,14 @@ export async function getPedidos(filtros: {
 }): Promise<PedidoDeReembolso[]> {
   const usuario = await requireActiveUser();
 
+  // Fronteiras em UTC (lib/core/datas.ts). Montadas no fuso de quem executa, o
+  // mesmo filtro devolvia conjuntos diferentes no servidor e na máquina local —
+  // e deixava de fora o lançamento do primeiro dia do período.
+  const janela = periodo(filtros.desde, filtros.ate);
+
   const recorte: FiltroDeReembolso = {
     situacao: ehSituacao(filtros.situacao) ? filtros.situacao : undefined,
-    desde: filtros.desde ? new Date(`${filtros.desde}T00:00:00`) : undefined,
-    ate: filtros.ate ? new Date(`${filtros.ate}T23:59:59`) : undefined,
+    ...janela,
   };
 
   if (usuario.role !== "ADMIN") {
@@ -188,7 +193,7 @@ const Periodo = z.object({
 });
 
 function intervalo(desde: string, ate: string) {
-  return { desde: new Date(`${desde}T00:00:00`), ate: new Date(`${ate}T23:59:59`) };
+  return { desde: inicioDoDia(desde), ate: fimDoDia(ate) };
 }
 
 /** Prévia obrigatória: mostra o impacto antes de qualquer escrita (Art. 1). */

@@ -293,8 +293,10 @@ export async function criarParcelamento(
     await lerContaEmTransacao(t, esc, dados.accountId);
 
     for (let i = 1; i <= parcelas; i++) {
+      // Em UTC: o dia de calendário é ancorado em UTC, e usar os métodos locais
+      // aqui faria a parcela pular de mês conforme o fuso de quem executa.
       const data = new Date(dados.date);
-      data.setMonth(dados.date.getMonth() + (i - 1));
+      data.setUTCMonth(dados.date.getUTCMonth() + (i - 1));
 
       criarUnico(
         t,

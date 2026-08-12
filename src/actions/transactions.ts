@@ -16,6 +16,7 @@ import {
   type LancamentoComRelacoes,
 } from "@/lib/core/repositories/transactions.repo";
 import { escopoPronto } from "@/lib/core/firestore";
+import { diaDeCalendario } from "@/lib/core/datas";
 import { traduzirErro } from "@/lib/guardrails/transactions";
 import { fail, failFromZod, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
 
@@ -103,7 +104,9 @@ function paraDados(d: z.infer<typeof Lancamento>): DadosLancamento {
     amount: d.amount,
     type: d.type,
     status: d.status,
-    date: new Date(d.date),
+    // Dia de calendário, não instante: gravado ao meio-dia UTC para que nenhum
+    // fuso empurre o lançamento para o dia anterior (ver lib/core/datas.ts).
+    date: diaDeCalendario(d.date),
     accountId: d.accountId,
     categoryId: d.categoryId,
     payee: d.payee ?? null,

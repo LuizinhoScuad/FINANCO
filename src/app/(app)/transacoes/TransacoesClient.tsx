@@ -3,7 +3,8 @@
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createTransaction, deleteTransaction, toggleTransactionStatus, getTransactions, attachReceipt } from "@/actions/transactions";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { hojeNoCampo } from "@/lib/core/datas";
 import type { Account, Category, Transaction } from "@/types";
 import {
     exportarTransacoesPDF,
@@ -47,7 +48,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
     const [ocrStatus, setOcrStatus] = useState("");
     const [ocrDesc, setOcrDesc] = useState("");
     const [ocrAmount, setOcrAmount] = useState("");
-    const [ocrDate, setOcrDate] = useState(new Date().toISOString().split("T")[0]);
+    const [ocrDate, setOcrDate] = useState(hojeNoCampo());
     const [receiptUrl, setReceiptUrl] = useState("");
     const [receiptPreview, setReceiptPreview] = useState("");
     const cameraRef = useRef<HTMLInputElement>(null);
@@ -184,7 +185,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             setReembolso(true);
             setOcrDesc("");
             setOcrAmount("");
-            setOcrDate(new Date().toISOString().split("T")[0]);
+            setOcrDate(hojeNoCampo());
             setReceiptUrl("");
             setReceiptPreview("");
             setOcrStatus("");
@@ -523,7 +524,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                                         tx.aprovacao === "REJEITADA" && tx.rejectionReason
                                                             ? `Motivo: ${tx.rejectionReason}`
                                                             : tx.aprovacao === "RESSARCIDA" && tx.reimbursedAt
-                                                              ? `Pago em ${formatDate(tx.reimbursedAt)}`
+                                                              ? `Pago em ${formatDateTime(tx.reimbursedAt)}`
                                                               : undefined
                                                     }
                                                     style={{

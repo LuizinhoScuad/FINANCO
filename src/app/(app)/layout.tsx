@@ -25,19 +25,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     // ainda não publicado, por exemplo — derrubaria o app inteiro por causa de
     // um número ao lado de um item de menu. O badge é conveniência; some em
     // silêncio (com o motivo no log do servidor) em vez de levar a página junto.
-    const [pendentes, aprovacoes, corrigir] = await Promise.all([
+    const [pendentes, aprovacoes, corrigir, aPagar] = await Promise.all([
         semQuebrar("usuarios pendentes", () =>
             isAdmin ? listarUsuarios().then((u) => u.filter((x) => x.status === "PENDING").length) : 0,
         ),
         semQuebrar("pedidos aguardando", () => (isAdmin ? contarPedidos("ENVIADA") : 0)),
         semQuebrar("pedidos rejeitados", () => contarPedidos("REJEITADA", usuario.uid)),
+        // Aprovados a pagar: da equipe toda para o gestor, só os próprios para
+        // quem gastou — o mesmo recorte que a tela /aprovados aplica (Art. 5).
+        semQuebrar("aprovados a pagar", () =>
+            contarPedidos("APROVADA", isAdmin ? undefined : usuario.uid),
+        ),
     ]);
 
     return (
         <div style={{ display: "flex", minHeight: "100vh" }}>
             {/* Sidebar: visível apenas em telas >= 768px */}
             <div className="sidebar-wrapper">
-                <Sidebar isAdmin={isAdmin} pendentes={pendentes} aprovacoes={aprovacoes} corrigir={corrigir} />
+                <Sidebar isAdmin={isAdmin} pendentes={pendentes} aprovacoes={aprovacoes} corrigir={corrigir} aPagar={aPagar} />
             </div>
 
             <main className="main-content">
@@ -46,7 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
             {/* Bottom nav: visível apenas em telas < 768px */}
             <div className="bottom-nav-wrapper">
-                <BottomNav isAdmin={isAdmin} pendentes={pendentes} aprovacoes={aprovacoes} corrigir={corrigir} />
+                <BottomNav isAdmin={isAdmin} pendentes={pendentes} aprovacoes={aprovacoes} corrigir={corrigir} aPagar={aPagar} />
             </div>
 
             <style>{`

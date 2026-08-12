@@ -14,6 +14,84 @@
 
 ## Sessões
 
+### 2026-08-12 — O dia que se digita é o dia que se vê: data de calendário, tela de Aprovados e filtros de relatório
+
+**Horário de registro:** 12/08/2026 às 11:49
+
+**O que foi feito:**
+
+Quatro pedidos do Luiz. O primeiro ("no relatório aprovados a pagar os valores
+finais estão ignorando um lançamento de R$ 37,00") e o terceiro ("os filtros não
+estão funcionando corretamente para cada usuário diferente") tinham a mesma
+causa.
+
+1. **Causa do lançamento que sumia — fuso horário.** A data era gravada com
+   `new Date("2026-08-01")`, que o JavaScript lê como meia-noite em UTC. O
+   servidor (Cloud Run, UTC) mostrava 01/08; o navegador no Brasil (UTC-3)
+   mostrava a mesma marca como 31/07; e a fronteira do filtro era montada no
+   fuso de quem executava. Quem filtrava pelo que via na tela pedia julho para
+   um lançamento que o banco guardou em agosto — ele saía da lista e o valor
+   saía dos totais, sem pista nenhuma.
+   - Novo `src/lib/core/datas.ts`: dia de calendário gravado ao meio-dia UTC,
+     fronteiras de período sempre em UTC, exibição em UTC.
+   - `formatDate` passa a exibir dia de calendário em UTC; novo `formatDateTime`
+     para carimbo de acontecimento (pago em, aprovado em), onde o fuso de quem
+     lê é o certo.
+   - `hojeNoCampo()` usa o relógio local: `toISOString()` devolvia o dia
+     seguinte para quem lançasse depois das 21h.
+   - **Sem migração de dados** (Art. 10): o histórico à meia-noite UTC cai no
+     mesmo dia lido em UTC e fica dentro das novas fronteiras.
+2. **Tela `/aprovados` + item na lateral e no menu do celular**, com contador
+   azul: total a pagar, quebra por pessoa com subtotal, dias de espera do mais
+   antigo, aviso de comprovante faltando e fechamento de pagamento com prévia
+   (Art. 1), com o período deduzido dos próprios pedidos.
+3. **Filtros de Relatórios refeitos:** atalhos de período (tudo, este mês, mês
+   passado, últimos 30/90 dias, este ano) — o único filtro que vai ao servidor;
+   situação em marcadores múltiplos; pessoa, busca livre, comprovante e
+   ordenação filtrando na tela; totais separados **por situação** em vez do
+   balde "a receber" que somava rejeitado junto com aprovado; e a linha que diz
+   quantos pedidos e quanto em dinheiro o filtro está escondendo.
+4. **Exportação** passa a levar exatamente o que está na tela.
+
+**Arquivos criados/modificados:**
+- `src/lib/core/datas.ts` *(novo)* — fonte única da regra de data
+- `tests/datas.test.ts` *(novo)* — 15 testes do dia de calendário e das fronteiras
+- `src/app/(app)/aprovados/page.tsx` · `AprovadosClient.tsx` *(novos)* — tela de aprovados a pagar
+- `specs/financo/fases/FASE-10-DATA-DE-CALENDARIO-E-FILTROS.md` *(novo)* — a fase
+- `src/lib/utils.ts` *(alterado)* — `formatDate` em UTC, `formatDateTime` novo, `getMonthRange` em UTC
+- `src/actions/transactions.ts` *(alterado)* — data gravada como dia de calendário
+- `src/actions/reembolsos.ts` *(alterado)* — fronteiras de período em UTC
+- `src/lib/core/repositories/transactions.repo.ts` *(alterado)* — parcelas caminham em UTC
+- `src/app/(app)/relatorios/RelatoriosClient.tsx` *(alterado)* — filtros e totais refeitos
+- `src/app/(app)/transacoes/TransacoesClient.tsx` *(alterado)* — data padrão pelo relógio local
+- `src/components/layout/Sidebar.tsx` · `BottomNav.tsx` *(alterados)* — item Aprovados e contador
+- `src/app/(app)/layout.tsx` *(alterado)* — contador de aprovados a pagar
+- `specs/financo/02-PLAN.md` *(alterado)* — fase 10 na tabela
+- `.claude/launch.json` *(novo)* — como subir o servidor local
+
+**Portões:** `verificar:estrutura` ✓ · 58 testes ✓ · `typecheck` ✓ · `lint` ✓
+(só os 4 avisos que já existiam) · `build` ✓ com a rota `/aprovados`.
+
+**NÃO VERIFICADO (Art. 3):** o `.env` não está nesta máquina, então nada rodou
+contra o Firestore — não se conferiu na tela que o lançamento de R$ 37,00 voltou
+a somar, nem `test:fumaca`, `test:responsivo` ou `scan`. O diagnóstico é por
+leitura de código e está reproduzido em teste puro, não observado no dado real.
+
+**Pendências / próximos passos:**
+- Conferir o R$ 37,00 no ar, com dados reais.
+- Rodar fumaça, responsivo e o Guardião quando houver credencial.
+- O menu do celular do gestor foi para seis itens; a sonda de responsivo é quem
+  diz se o rótulo cabe em 375px.
+
+**Observações para debugging:**
+- A equipe vai ver as datas dos lançamentos existentes **um dia à frente** do que
+  viam antes. Nenhum documento foi tocado: é o dia correto finalmente sendo
+  exibido — o que mostrava 31/07 sempre foi 01/08 no banco.
+- Se algum lançamento ainda ficar fora de um total, o suspeito seguinte é o
+  documento sem `reembolso: true` no Firestore, e não mais a data.
+
+---
+
 ### 2026-08-09 — Reembolso remontado sobre Transações, Relatórios para todos, e o harness do SDD
 
 **Horário de registro:** 09/08/2026 às 20:29

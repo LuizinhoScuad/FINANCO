@@ -9,12 +9,15 @@ type ItemDeMenu = {
   href: string;
   label: string;
   icon: string;
-  badge?: "pendentes" | "aprovacoes" | "corrigir";
+  badge?: "pendentes" | "aprovacoes" | "corrigir" | "aPagar";
 };
 
 const links: ItemDeMenu[] = [
   { href: "/dashboard", label: "Dashboard", icon: "◧" },
   { href: "/transacoes", label: "Transações", icon: "⇄", badge: "corrigir" },
+  // Aprovados fica junto de Relatórios porque responde a mesma pergunta —
+  // quanto há a receber — só que sem depender de filtro nenhum.
+  { href: "/aprovados", label: "Aprovados", icon: "✓", badge: "aPagar" },
   { href: "/relatorios", label: "Relatórios", icon: "▤" },
   { href: "/contas", label: "Contas", icon: "▦" },
   { href: "/categorias", label: "Categorias", icon: "⌘" },
@@ -31,21 +34,25 @@ export function Sidebar({
   pendentes = 0,
   aprovacoes = 0,
   corrigir = 0,
+  aPagar = 0,
 }: {
   isAdmin?: boolean;
   pendentes?: number;
   aprovacoes?: number;
   corrigir?: number;
+  aPagar?: number;
 }) {
   const pathname = usePathname();
-  const contadores = { pendentes, aprovacoes, corrigir };
+  const contadores = { pendentes, aprovacoes, corrigir, aPagar };
 
-  const Badge = ({ n }: { n: number }) =>
+  // O contador de Aprovados é azul, o mesmo azul da situação "a pagar" nas
+  // listas: amarelo já quer dizer "alguém precisa decidir", e aqui não precisa.
+  const Badge = ({ n, cor = "#ffc107" }: { n: number; cor?: string }) =>
     n > 0 ? (
       <span
         style={{
           marginLeft: "auto",
-          backgroundColor: "#ffc107",
+          backgroundColor: cor,
           color: "#0a0e1a",
           borderRadius: "10px",
           padding: "0 6px",
@@ -124,7 +131,7 @@ export function Sidebar({
             >
               <span>{icon}</span>
               {label}
-              {badge && <Badge n={contadores[badge]} />}
+              {badge && <Badge n={contadores[badge]} cor={badge === "aPagar" ? "#60a5fa" : undefined} />}
             </Link>
           );
         })}
@@ -166,7 +173,7 @@ export function Sidebar({
                 >
                   <span>{icon}</span>
                   {label}
-                  {badge && <Badge n={contadores[badge]} />}
+                  {badge && <Badge n={contadores[badge]} cor={badge === "aPagar" ? "#60a5fa" : undefined} />}
                 </Link>
               );
             })}

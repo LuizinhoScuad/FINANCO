@@ -146,6 +146,7 @@ Guardião vem depois que existe o que vigiar.
 | ~~[7](fases/FASE-7-ADMIN-LOTES-RELATORIOS.md)~~ | ~~Aprovação, lotes, relatórios~~ | 🚫 revogada na v3 — código removido |
 | [8](fases/FASE-8-GUARDIAO.md) | Verificação de integridade, observador, aprendizado | pendente |
 | [9](fases/FASE-9-QUALIDADE-GO-LIVE.md) | Testes, integração contínua, auditoria, piloto | pendente |
+| [10](fases/FASE-10-DATA-DE-CALENDARIO-E-FILTROS.md) | Dia de calendário, tela de Aprovados, filtros de relatório | ✅ concluída |
 
 As fases 6 e 7 chegaram a ser implementadas e foram desfeitas na revisão v3. Os
 arquivos delas continuam em `fases/` como registro histórico — não são trabalho
