@@ -51,9 +51,11 @@ type Props = {
   pedidos: PedidoDeReembolso[];
   lotes: PaymentBatch[];
   equipe: Array<{ uid: string; name: string }>;
+  /** Quantos pedidos existem ao todo, ignorando período. */
+  totalDePedidos: number;
 };
 
-export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: Props) {
+export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe, totalDePedidos }: Props) {
   // Do servidor: só o recorte de período mexe nisto.
   const [doPeriodo, setDoPeriodo] = useState(iniciais);
   const [desde, setDesde] = useState("");
@@ -164,6 +166,7 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
 
   /** O que o filtro deixou de fora — dito em número, não deduzido pelo usuário. */
   const ocultos = doPeriodo.length - filtrados.length;
+  const foraDoPeriodo = Math.max(0, totalDePedidos - doPeriodo.length);
   const valorOculto = arredondar(somar(...doPeriodo.map((p) => p.amount)) - totais.total);
 
   const porPessoa = useMemo(() => {
@@ -348,7 +351,9 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
 
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap", justifyContent: "space-between" }}>
           <span style={{ fontSize: "0.78rem", color: "var(--color-muted)" }}>
-            {isPending ? "Carregando…" : `Mostrando ${filtrados.length} de ${doPeriodo.length} pedido(s) · ${periodoTexto}`}
+            {isPending
+              ? "Carregando…"
+              : `Mostrando ${filtrados.length} de ${totalDePedidos} pedido(s) existentes · ${periodoTexto}`}
           </span>
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
             {isAdmin && (
@@ -361,6 +366,15 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
             </button>
           </div>
         </div>
+
+        {/* O período é recortado no BANCO: o que fica fora nem chega à tela.
+            Este aviso é o que impede o total de vir menor sem explicação. */}
+        {foraDoPeriodo > 0 && (
+          <div style={{ fontSize: "0.78rem", color: "#ffc107" }}>
+            {foraDoPeriodo} pedido(s) estão fora deste período e não entram em nenhum total desta tela. Clique em
+            “Tudo” para incluir.
+          </div>
+        )}
 
         {ocultos > 0 && (
           <div style={{ fontSize: "0.78rem", color: "#ffc107" }}>

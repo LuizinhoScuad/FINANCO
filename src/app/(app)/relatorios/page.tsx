@@ -1,5 +1,5 @@
 import { requireActiveUser } from "@/lib/auth";
-import { getEquipeAtiva, getLotes, getPedidos } from "@/actions/reembolsos";
+import { getEquipeAtiva, getLotes, getPedidos, getTotalDePedidos } from "@/actions/reembolsos";
 import { RelatoriosClient } from "./RelatoriosClient";
 
 export const dynamic = "force-dynamic";
@@ -15,11 +15,22 @@ export default async function RelatoriosPage() {
   const usuario = await requireActiveUser();
   const isAdmin = usuario.role === "ADMIN";
 
-  const [pedidos, lotes, equipe] = await Promise.all([
+  const [pedidos, lotes, equipe, totalDePedidos] = await Promise.all([
     getPedidos({}),
     getLotes(),
     isAdmin ? getEquipeAtiva() : Promise.resolve([]),
+    // Quantos pedidos existem no total: o recorte de período é feito no banco,
+    // então sem este número a tela não teria como avisar que algo ficou fora.
+    getTotalDePedidos(),
   ]);
 
-  return <RelatoriosClient isAdmin={isAdmin} pedidos={pedidos} lotes={lotes} equipe={equipe} />;
+  return (
+    <RelatoriosClient
+      isAdmin={isAdmin}
+      pedidos={pedidos}
+      lotes={lotes}
+      equipe={equipe}
+      totalDePedidos={totalDePedidos}
+    />
+  );
 }

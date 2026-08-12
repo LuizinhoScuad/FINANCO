@@ -29,6 +29,8 @@ type Props = {
   equipe: Array<{ uid: string; name: string }>;
   /** Qual atalho de período o servidor já usou para carregar os pagos. */
   periodoInicial: string;
+  /** Quantos pagamentos existem ao todo, ignorando período. */
+  totalDePagos: number;
 };
 
 /** Uma pessoa e tudo o que ela tem aprovado à espera do pagamento. */
@@ -45,7 +47,7 @@ type Bloco = {
 
 const AZUL = "#60a5fa";
 
-export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe, periodoInicial }: Props) {
+export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe, periodoInicial, totalDePagos }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [erro, setErro] = useState("");
@@ -145,6 +147,8 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
     ...pagos.map((p) => p.amount),
     -totalPago,
   );
+
+  const foraDoPeriodo = Math.max(0, totalDePagos - pagos.length);
 
   const ultimoPagamento = pagosFiltrados.reduce<Date | null>(
     (ultimo, p) => (p.reimbursedAt && (ultimo === null || p.reimbursedAt > ultimo) ? p.reimbursedAt : ultimo),
@@ -372,7 +376,7 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
 
       <div className="card" style={{ padding: "1rem", display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <div>
-          <label className="rot">Período do pagamento</label>
+          <label className="rot">Período — pela data do lançamento</label>
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
             {opcoes.map((o) => (
               <Chip key={o.id} texto={o.texto} ativo={atalho === o.id} onClick={() => carregarPagos(o.id)} />
@@ -414,8 +418,20 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
         </div>
 
         <span style={{ fontSize: "0.78rem", color: "var(--color-muted)" }}>
-          {isPending ? "Carregando…" : `Mostrando ${pagosFiltrados.length} de ${pagos.length} pagamento(s) · ${periodoTexto}`}
+          {isPending
+            ? "Carregando…"
+            : `Mostrando ${pagosFiltrados.length} de ${totalDePagos} pagamento(s) existentes · ${periodoTexto}`}
         </span>
+
+        {/* O recorte de período acontece no BANCO: o que cai fora dele nem chega
+            aqui. Sem este aviso, o total simplesmente vem menor — foi assim que
+            um pagamento de R$ 37,00, carimbado em outro ano, sumiu da conta. */}
+        {foraDoPeriodo > 0 && (
+          <div style={{ fontSize: "0.78rem", color: "#ffc107" }}>
+            {foraDoPeriodo} pagamento(s) estão fora deste período e não entram em nenhum total acima. Clique em
+            “Tudo” para incluir — a data considerada é a do lançamento, não a do pagamento.
+          </div>
+        )}
 
         {ocultosPagos > 0 && (
           <div style={{ fontSize: "0.78rem", color: "#ffc107" }}>

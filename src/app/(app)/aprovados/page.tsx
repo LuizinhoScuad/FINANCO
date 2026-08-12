@@ -1,5 +1,5 @@
 import { requireActiveUser } from "@/lib/auth";
-import { getEquipeAtiva, getPedidos } from "@/actions/reembolsos";
+import { getEquipeAtiva, getPedidos, getTotalDePedidos } from "@/actions/reembolsos";
 import { atalhosDePeriodo } from "@/lib/core/datas";
 import { AprovadosClient } from "./AprovadosClient";
 
@@ -24,10 +24,13 @@ export default async function AprovadosPage() {
   // está a um clique nos atalhos.
   const inicial = atalhosDePeriodo().find((a) => a.id === "90")!;
 
-  const [aPagar, pagos, equipe] = await Promise.all([
+  const [aPagar, pagos, equipe, totalDePagos] = await Promise.all([
     getPedidos({ situacao: "APROVADA" }),
     getPedidos({ situacao: "RESSARCIDA", desde: inicial.desde, ate: inicial.ate }),
     isAdmin ? getEquipeAtiva() : Promise.resolve([]),
+    // Quantos pagamentos existem no total: é o que permite à tela dizer que há
+    // algo fora do período em vez de mostrar um total menor sem explicação.
+    getTotalDePedidos("RESSARCIDA"),
   ]);
 
   return (
@@ -37,6 +40,7 @@ export default async function AprovadosPage() {
       pagos={pagos}
       equipe={equipe}
       periodoInicial={inicial.id}
+      totalDePagos={totalDePagos}
     />
   );
 }

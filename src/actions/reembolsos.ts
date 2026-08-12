@@ -10,6 +10,7 @@ import {
   listarLotes,
   listarPedidosDaEquipe,
   listarPedidosDoUsuario,
+  contarTodosOsPedidos,
   previaDeFechamento,
   type FiltroDeReembolso,
 } from "@/lib/core/repositories/transactions.repo";
@@ -72,6 +73,21 @@ export async function getPedidos(filtros: {
   }
 
   return listarPedidosDaEquipe(await mapaDeNomes(), { ...recorte, userId: filtros.userId });
+}
+
+/**
+ * Quantos pedidos existem ao todo, ignorando qualquer período.
+ *
+ * O recorte de data acontece no banco: o que cai fora dele não chega à tela, e
+ * a tela precisa deste número para poder dizer "há N fora deste período" em vez
+ * de mostrar um total menor sem explicação. O alcance segue o papel (Art. 5).
+ */
+export async function getTotalDePedidos(situacao?: string): Promise<number> {
+  const usuario = await requireActiveUser();
+  return contarTodosOsPedidos(
+    usuario.role === "ADMIN" ? undefined : usuario.uid,
+    ehSituacao(situacao) ? situacao : undefined,
+  );
 }
 
 export async function getFilaDeAprovacao(): Promise<PedidoDeReembolso[]> {

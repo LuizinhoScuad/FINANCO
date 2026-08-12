@@ -592,6 +592,24 @@ export async function listarFilaDeAprovacao(
   return pedidos.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }
 
+/**
+ * Quantos pedidos existem no total, sem recorte de data.
+ *
+ * Serve para a tela poder dizer "10 de 11": um filtro de período é aplicado no
+ * BANCO, então o que fica fora dele nem chega à tela — e sem este número não há
+ * como avisar que ficou algo para trás. Foi exatamente assim que um pagamento
+ * de R$ 37,00, carimbado em outro ano, sumiu de um total sem deixar pista.
+ */
+export async function contarTodosOsPedidos(
+  uid?: string,
+  situacao?: AprovacaoStatus,
+): Promise<number> {
+  const base = uid ? escopoDe(uid).transactions : grupoLancamentos();
+  let q = (base as FirebaseFirestore.Query).where("reembolso", "==", true);
+  if (situacao) q = q.where("aprovacao", "==", situacao);
+  return (await q.count().get()).data().count;
+}
+
 export async function contarPedidos(
   situacao: AprovacaoStatus,
   uid?: string,
