@@ -3,12 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { getPedidos } from "@/actions/reembolsos";
 import { corDoStatus, jaAtendido, rotulo, rotuloCurto } from "@/lib/core/aprovacao";
-import {
-  hojeNoCampo,
-  primeiroDiaDoMes,
-  somarDias,
-  ultimoDiaDoMes,
-} from "@/lib/core/datas";
+import { atalhosDePeriodo } from "@/lib/core/datas";
+import { Chip } from "@/components/ui/Chip";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { arredondar, somar } from "@/lib/core/money";
 import {
@@ -57,25 +53,6 @@ type Props = {
   equipe: Array<{ uid: string; name: string }>;
 };
 
-/** Atalhos de período. Calculados pelo relógio de quem usa, não pelo do servidor. */
-function atalhos(): Array<{ id: string; texto: string; desde: string; ate: string }> {
-  const hoje = hojeNoCampo();
-  const mesPassado = somarDias(primeiroDiaDoMes(hoje), -1);
-
-  return [
-    { id: "mes", texto: "Este mês", desde: primeiroDiaDoMes(hoje), ate: ultimoDiaDoMes(hoje) },
-    {
-      id: "mes-passado",
-      texto: "Mês passado",
-      desde: primeiroDiaDoMes(mesPassado),
-      ate: ultimoDiaDoMes(mesPassado),
-    },
-    { id: "30", texto: "Últimos 30 dias", desde: somarDias(hoje, -29), ate: hoje },
-    { id: "90", texto: "Últimos 90 dias", desde: somarDias(hoje, -89), ate: hoje },
-    { id: "ano", texto: "Este ano", desde: `${hoje.slice(0, 4)}-01-01`, ate: `${hoje.slice(0, 4)}-12-31` },
-  ];
-}
-
 export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: Props) {
   // Do servidor: só o recorte de período mexe nisto.
   const [doPeriodo, setDoPeriodo] = useState(iniciais);
@@ -95,7 +72,7 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
 
   // Calculado uma vez, na montagem: os atalhos leem o relógio, e ler o relógio
   // durante a renderização deixaria a tela dependendo de quando ela redesenha.
-  const [opcoes] = useState(atalhos);
+  const [opcoes] = useState(atalhosDePeriodo);
 
   function carregar(novoDesde: string, novoAte: string) {
     setErro("");
@@ -625,42 +602,6 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe }: 
         }
       `}</style>
     </div>
-  );
-}
-
-/** Botão de filtro que mostra, pelo próprio desenho, se está ligado. */
-function Chip({
-  texto,
-  ativo,
-  cor,
-  onClick,
-}: {
-  texto: string;
-  ativo: boolean;
-  cor?: string;
-  onClick: () => void;
-}) {
-  const destaque = cor ?? "var(--color-accent)";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={ativo}
-      style={{
-        fontSize: "0.75rem",
-        fontWeight: ativo ? 700 : 500,
-        padding: "0.3rem 0.7rem",
-        borderRadius: "999px",
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        color: ativo ? destaque : "var(--color-muted)",
-        border: `1px solid ${ativo ? destaque : "var(--color-border)"}`,
-        backgroundColor: ativo ? "var(--color-surface-2)" : "transparent",
-        transition: "all 0.15s",
-      }}
-    >
-      {texto}
-    </button>
   );
 }
 
