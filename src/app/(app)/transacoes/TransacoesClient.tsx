@@ -627,7 +627,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             {/* Modal Form */}
             {showForm && (
                 <div
-                    className="modal-overlay"
+                    className="overlay-modal"
                     onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
                 >
                     <div className="card animate-scale-up modal-card">
@@ -873,8 +873,12 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                     to { transform: scale(1); opacity: 1; }
                 }
 
-                /* --- modal de lançamento ---------------------------------
-                   O botão de confirmar sumia no iPhone. Duas causas:
+                /* --- cartão do modal de lançamento -----------------------
+                   O posicionamento e a trava lateral vivem em '.overlay-modal'
+                   (globals.css), compartilhados por todos os modais. Aqui fica
+                   só o que é próprio desta tela: a altura e o rodapé fixo.
+
+                   O botão de confirmar sumia no iPhone por duas razões:
 
                    1. 'vh' no iOS mede a tela INTEIRA, ignorando a barra de
                       endereço e a de ferramentas do Safari. Um modal com
@@ -885,32 +889,18 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
 
                    2. Mesmo com a altura certa, confirmar dependia de rolar
                       até o fim de um formulário longo. Agora as ações ficam
-                      grudadas no rodapé (position: sticky), sempre à vista.
-
-                   O overlay rola por fora como rede de segurança: em
-                   navegador antigo, sem 'dvh', o modal continua alcançável.  */
-                .modal-overlay {
-                    position: fixed;
-                    inset: 0;
-                    z-index: 50;
-                    background-color: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(4px);
-                    display: flex;
-                    padding: 1rem;
-                    overflow-y: auto;
-                    -webkit-overflow-scrolling: touch;
-                }
+                      grudadas no rodapé (position: sticky), sempre à vista. */
                 .modal-card {
-                    /* 'margin: auto' centraliza quando cabe e permite rolar
-                       quando não cabe — com 'align-items: center' o topo do
-                       modal fica inalcançável. */
-                    margin: auto;
                     width: 100%;
                     max-width: 520px;
                     display: flex;
                     flex-direction: column;
                     gap: 1.25rem;
                     overflow-y: auto;
+                    /* Trava o eixo X aqui também: o cartão é um segundo
+                       contêiner de rolagem, e 'overflow-y: auto' sozinho
+                       ligaria a rolagem horizontal junto. */
+                    overflow-x: hidden;
                     /* A altura vem da variável abaixo. Declarar 'max-height'
                        duas vezes na mesma regra não serviria de reserva: o
                        minificador do build descarta a primeira — conferido no
@@ -945,7 +935,6 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                     padding-bottom: calc(0.875rem + env(safe-area-inset-bottom));
                 }
                 @media (max-width: 767px) {
-                    .modal-overlay { padding: 0.5rem; }
                     /* No celular o alvo de toque vale mais que a simetria: o
                        botão que conclui ocupa a largura que sobra. */
                     .modal-acoes button[type="submit"] { flex: 1; }
@@ -953,7 +942,6 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                 /* Deitado, a altura é o recurso escasso: o modal ocupa o que
                    der e as folgas encolhem para sobrar espaço ao formulário. */
                 @media (max-height: 500px) {
-                    .modal-overlay { padding: 0.35rem; }
                     .modal-card { gap: 0.75rem; padding: 0.875rem; }
                     .modal-acoes {
                         margin: 0.25rem -0.875rem -0.875rem;

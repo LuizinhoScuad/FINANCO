@@ -102,17 +102,8 @@ export function ConfirmarDestrutivo({
 }) {
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.8)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 60,
-        padding: "1rem",
-      }}
+      className="overlay-modal"
+      style={{ zIndex: 60 }}
       onClick={(e) => e.target === e.currentTarget && !ocupado && onCancelar()}
     >
       <div className="card" style={{ width: "100%", maxWidth: "440px", borderTop: "3px solid var(--color-danger)" }}>

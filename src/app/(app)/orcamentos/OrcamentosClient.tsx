@@ -161,7 +161,7 @@ export function OrcamentosClient({
 
             {showForm && (
                 <div
-                    style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}
+                    className="overlay-modal"
                     onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
                 >
                     <div className="card" style={{ width: "100%", maxWidth: "380px", display: "flex", flexDirection: "column", gap: "1.25rem" }}>

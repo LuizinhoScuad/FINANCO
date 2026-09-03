@@ -86,6 +86,51 @@
 }
 
 @layer utilities {
+  /* Janela sobreposta (modal) — a mesma para todas as telas do sistema.
+     'position: fixed' escapa da trava de rolagem do body: por isso a página
+     inicial parou de deslizar e o formulário de lançamento continuou
+     deslizando. A trava do eixo X precisa ser declarada aqui também.
+     'overflow-y: auto' com 'overflow-x' não declarado vira 'auto' nos dois
+     eixos pela regra do CSS — é justamente o que deixava o modal arrastar
+     para os lados no iPhone. */
+  .overlay-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* O gesto que chega ao fim do modal não vaza para a página de trás. */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* O cartão do modal.
+     'margin: auto' centraliza quando cabe e deixa rolar quando não cabe —
+     'align-items: center' deixaria o topo inalcançável. 'min-width: 0' é o
+     que permite encolher: sem ele, um campo nativo do iOS (data, seleção)
+     mais largo que a tela estica o modal inteiro. */
+  .overlay-modal > * {
+    margin: auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  @media (max-width: 767px) {
+    .overlay-modal {
+      padding: 0.5rem;
+    }
+  }
+
+  @media (max-height: 500px) {
+    .overlay-modal {
+      padding: 0.35rem;
+    }
+  }
+
   /* Grade de campos lado a lado.
      Os filhos ganham 'min-width: 0' para poderem encolher (ver a regra de
      campos acima), e abaixo de 420px a grade vira uma coluna só: dois campos

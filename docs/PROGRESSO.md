@@ -156,11 +156,47 @@ Arquivos: `src/app/globals.css` · `src/app/(app)/transacoes/TransacoesClient.ts
 `src/components/dados-bancarios/FormularioDadosBancarios.tsx` ·
 `src/app/(app)/admin/usuarios/UsuariosClient.tsx`.
 
+**Terceira correção — os modais continuavam deslizando.**
+
+O Luiz confirmou que a página inicial travou, mas o formulário de lançamento
+não: *"essa tela, e acredito que as outras não ficaram, corrija todas as telas,
+verifique antes"*.
+
+Causa: **`position: fixed` escapa da trava do `body`**. Um modal não é contido
+pelo `overflow-x` do documento — precisa travar o próprio eixo. Pior: o overlay
+tinha `overflow-y: auto` e, pela regra do CSS, um eixo `auto` com o outro
+`visible` transforma os dois em roláveis. O modal arrastava sozinho.
+
+Antes de corrigir, foi feita uma medição de verdade: um script com Playwright
+carregou o CSS real (global + o do componente, lido do fonte) e mediu o modal
+em 375, 390, 414 e 430px, em dois modos — **real** (nada pode ser cortado nem
+deslizar) e **estresse**, com um elemento de 900px que se recusa a encolher,
+imitando um campo nativo do iOS (cortar é aceitável, deslizar não). O modal
+isolado passou limpo no Chromium, o que confirmou que o problema não estava no
+conteúdo dele, e sim na falta de trava do contêiner — no Safari os controles
+nativos de data e seleção têm largura própria e se comportam diferente.
+
+Correção: os **seis modais do sistema** passaram a usar uma classe única,
+`.overlay-modal` (globals.css), com `overflow-x: hidden`, `min-width: 0` e
+`max-width: 100%` no cartão, `overscroll-behavior: contain` e centralização por
+`margin: auto`. Antes eram seis blocos de estilo inline repetidos, cada um com
+seu valor — três deles sequer tinham margem lateral. Telas cobertas:
+Transações, Categorias, Contas, Orçamentos, rejeição em Aprovações e a
+confirmação destrutiva (`ConfirmarDestrutivo`). A barra inferior já estava
+protegida desde a fase anterior.
+
+Arquivos: `src/app/globals.css` · `TransacoesClient.tsx` · `CategoriasClient.tsx` ·
+`ContasClient.tsx` · `OrcamentosClient.tsx` · `AprovacoesClient.tsx` · `Aviso.tsx`.
+
 **Pendências:**
 - Com credenciais: `npm run test:integracao`, `npm run test:fumaca` (traz as
   checagens novas do portão) e `npm run test:responsivo` (agora inclui
   `/perfil`). **Pré-condição:** preencher os próprios dados antes — as sondas
   entram com a conta do administrador e batem no portão como todo mundo.
+  A `responsivo.mjs` é a verificação definitiva do deslize lateral: ela já mede
+  `scrollWidth` contra a janela e aponta o elemento culpado. Limitação
+  conhecida: ela navega pelas rotas, mas **não abre os modais** — o que foi
+  medido nesta sessão por fora, com o script de Playwright descartável.
 - Os dados bancários **não entram no backup** (o snapshot cobre só as
   subcoleções) — e, pelo mesmo motivo, a restauração não os apaga. Decisão de
   escopo, não esquecimento.

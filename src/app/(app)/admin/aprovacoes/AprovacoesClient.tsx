@@ -326,7 +326,8 @@ export function AprovacoesClient({ fila, equipe }: Props) {
       {/* Rejeição — o motivo é obrigatório */}
       {rejeitando && (
         <div
-          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", zIndex: 200 }}
+          className="overlay-modal"
+          style={{ zIndex: 200 }}
           onClick={() => setRejeitando(null)}
         >
           <div className="card" style={{ padding: "1.25rem", maxWidth: "420px", width: "100%" }} onClick={(e) => e.stopPropagation()}>
