@@ -164,12 +164,17 @@ export function UsuariosClient({
                       {descreverDadosBancarios(u.dadosBancarios).map((linha) => (
                         <div
                           key={linha.rotulo}
-                          style={{ display: "flex", gap: "0.5rem", fontSize: "0.72rem" }}
+                          style={{ display: "flex", gap: "0.5rem", fontSize: "0.72rem", flexWrap: "wrap" }}
                         >
-                          <span style={{ color: "var(--color-muted)", minWidth: "110px" }}>
+                          <span style={{ color: "var(--color-muted)", flex: "0 0 auto", minWidth: "96px" }}>
                             {linha.rotulo}
                           </span>
-                          <span style={{ fontWeight: 500 }}>{linha.valor}</span>
+                          {/* Chave PIX de e-mail ou aleatória é longa e não tem
+                              espaço para quebrar sozinha: sem isto ela empurra
+                              o cartão para além da tela do celular. */}
+                          <span style={{ fontWeight: 500, minWidth: 0, overflowWrap: "anywhere" }}>
+                            {linha.valor}
+                          </span>
                         </div>
                       ))}
                       <div style={{ fontSize: "0.68rem", color: "var(--color-muted)", marginTop: "3px" }}>

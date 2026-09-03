@@ -649,7 +649,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                         </div>
 
                         <form id="tx-form" onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "0.75rem" }}>
+                            <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label className="label-sm">Tipo</label>
                                     <select
@@ -714,7 +714,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                 )}
                             </div>
 
-                            <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "0.75rem" }}>
+                            <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label className="label-sm">Descrição</label>
                                     <input
@@ -742,7 +742,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                 </div>
                             </div>
 
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                            <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label className="label-sm">Categoria</label>
                                     <select name="categoryId" className="input-base" required>
@@ -765,7 +765,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                 </div>
                             </div>
 
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                            <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     {/* O campo guardado continua sendo `payee`: renomear a
                                         coluna no banco exigiria migrar todo lançamento

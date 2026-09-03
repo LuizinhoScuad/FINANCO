@@ -117,9 +117,44 @@ baixas (paisagem), as folgas do modal encolhem para sobrar espaço ao formulári
 Arquivos: `src/app/(app)/transacoes/TransacoesClient.tsx` ·
 `src/app/dados-para-reembolso/page.tsx`.
 
-**NÃO VERIFICADO:** a correção não foi vista rodando num iPhone real — o que
-foi conferido de fato é o CSS gerado no build (fallback preservado, `@supports`,
-`sticky`, `env()`). Confirmar no aparelho depois do deploy.
+**Publicado e confirmado no aparelho.** Push (rebase sobre o commit
+`88aab70`, do manual do atalho, feito de outra máquina) e rollout do App
+Hosting concluídos; `/dados-para-reembolso` e `/perfil` saíram de 404 para 307,
+e o health check voltou verde. O Luiz confirmou no iPhone, em produção: **caiu
+no portão e cadastrou PIX e conta**, e **o botão de confirmar o lançamento
+aparece**. Critérios 7 e 11 da Fase 11 deixam de ser presunção.
+
+**Segunda correção — a tela "sambava" para os lados no iPhone.**
+
+Relato do Luiz, com fotos: *"quando eu ponho o dedo pro lado direito ou pro lado
+esquerdo, algumas telas elas sambam [...] fica cortado a direita ou a esquerda,
+depende de como eu mexo com o dedo"*. Dashboard, modal de lançamento e a tela
+de dados apareciam cortados, e a página deslizava no dedo.
+
+Causa: campo dentro de grade ou de flex **não encolhe abaixo da própria largura
+natural** — `min-width` vale `auto` por padrão. Um campo de data no iOS
+("3 de set. de 2026") pede uns 150px; dois deles lado a lado, mais as margens,
+passam da largura do aparelho. A página inteira ficava mais larga que a tela e
+rolava na horizontal.
+
+Corrigido em três camadas, em `src/app/globals.css`:
+1. **Trava** — `html, body { max-width: 100%; overflow-x: hidden }`, com
+   `overflow-x: clip` via `@supports`: `clip` faz o mesmo sem criar contexto de
+   rolagem, que quebraria o `position: sticky` do rodapé de ações.
+2. **Causa** — `min-width: 0; max-width: 100%` em `input, select, textarea,
+   button`, e quebra de palavra em rótulos e títulos.
+3. **Conforto** — utilitária `.grid-campos`: os filhos podem encolher e, abaixo
+   de 420px, a grade vira uma coluna só. Aplicada nas quatro grades do modal de
+   lançamento e nas duas do formulário de dados.
+
+Conferido que nada ficou inacessível atrás da trava: as duas tabelas largas
+(`minWidth` 700px e 760px) já têm rolagem própria e ficam ocultas no celular,
+onde existe a versão em cartões. No painel de usuários, a chave PIX longa
+(e-mail, aleatória) ganhou quebra de palavra.
+
+Arquivos: `src/app/globals.css` · `src/app/(app)/transacoes/TransacoesClient.tsx` ·
+`src/components/dados-bancarios/FormularioDadosBancarios.tsx` ·
+`src/app/(app)/admin/usuarios/UsuariosClient.tsx`.
 
 **Pendências:**
 - Com credenciais: `npm run test:integracao`, `npm run test:fumaca` (traz as

@@ -93,7 +93,7 @@ export function FormularioDadosBancarios({
         />
       </Campo>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(140px, 1fr) 2fr", gap: "0.75rem" }}>
+      <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "minmax(120px, 1fr) 2fr", gap: "0.75rem" }}>
         <Campo rotulo="Tipo da chave PIX" erro={erroDe("pixTipo")}>
           <select
             name="pixTipo"
@@ -133,7 +133,7 @@ export function FormularioDadosBancarios({
           uma, preencha as três.
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.75rem" }}>
+        <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "0.75rem" }}>
           <Campo rotulo="Banco" erro={erroDe("banco")}>
             <input name="banco" defaultValue={inicial?.banco ?? ""} placeholder="Ex: 341 Itaú" style={entrada} />
           </Campo>

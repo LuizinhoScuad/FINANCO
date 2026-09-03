@@ -42,14 +42,66 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* A tela não desliza para os lados.
+     No celular, uma única coisa mais larga que a tela — um campo que não
+     encolheu, uma tabela — faz a página inteira deslizar no dedo, e o
+     conteúdo fica cortado ora à direita, ora à esquerda. Isto é a trava:
+     vale para toda tela, inclusive as que ainda não existem.
+     A causa raiz é tratada logo abaixo; esta regra é a rede de segurança. */
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* 'clip' faz o mesmo sem criar um contexto de rolagem — que quebraria
+     'position: sticky' (o rodapé de ações do formulário depende dele). */
+  @supports (overflow-x: clip) {
+    html, body {
+      overflow-x: clip;
+    }
+  }
+
+  /* A CAUSA do deslize.
+     Campo dentro de grade ou de flex não encolhe abaixo da própria largura
+     natural, porque 'min-width' vale 'auto' por padrão. Um campo de data no
+     iOS ("3 de set. de 2026") pede uns 150px; dois deles lado a lado, mais
+     as margens, passam da largura de um iPhone — e a página estica.
+     Com 'min-width: 0' o campo passa a caber no espaço que existe. */
+  input, select, textarea, button {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Rótulo comprido ("Observação/Acompanhante") também empurra a coluna. */
+  label {
+    overflow-wrap: break-word;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: -0.02em;
+    overflow-wrap: break-word;
   }
 }
 
 @layer utilities {
+  /* Grade de campos lado a lado.
+     Os filhos ganham 'min-width: 0' para poderem encolher (ver a regra de
+     campos acima), e abaixo de 420px a grade vira uma coluna só: dois campos
+     espremidos em meia tela de celular são piores que dois empilhados.
+     O '!important' existe porque a proporção das colunas é definida em
+     'style' na própria tela, e estilo inline vence folha de estilo. */
+  .grid-campos > * {
+    min-width: 0;
+  }
+
+  @media (max-width: 420px) {
+    .grid-campos {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
   .surface { background-color: var(--color-surface); }
   .surface-2 { background-color: var(--color-surface-2); }
   .border-base { border: 1px solid var(--color-border); }

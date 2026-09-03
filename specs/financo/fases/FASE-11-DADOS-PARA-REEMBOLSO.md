@@ -141,12 +141,14 @@ descartável — sem isso ela quebraria, porque o harness é ativo e não tinha 
 | 4 | O comprovante mostra as mesmas linhas que o painel do administrador | ✅ fonte única `descreverDadosBancarios`, coberta por teste |
 | 5 | As rotas novas montam | ✅ `npm run build` — `/dados-para-reembolso` e `/perfil` na saída |
 | 6 | Portões verdes | ✅ estrutura íntegra · 84 testes · typecheck · lint (0 erros) · build |
-| 7 | Pessoa ativa sem dados não passa do portão, nem digitando a URL | ⚠️ **NÃO VERIFICADO** — exige servidor autenticado (Art. 3) |
+| 7 | Pessoa ativa sem dados não passa do portão, nem digitando a URL | ✅ verificado pelo Luiz em produção, 03/09/2026: caiu no portão e cadastrou PIX e conta bancária |
 | 8 | Comprovante e fallback de lote antigo com dados reais | ⚠️ **NÃO VERIFICADO** — exige Firestore |
 | 9 | Admin › Usuários mostra os dados e marca quem falta | ⚠️ **NÃO VERIFICADO** — exige Firestore |
 | 10 | Colaborador não vê dado de colega | ⚠️ **NÃO VERIFICADO** — a sonda `test:fumaca` já traz as checagens do portão, mas não pôde rodar |
 
-**Por que 7 a 10 não foram verificados.** O `.env` desta máquina existe, mas
+| 11 | O botão de confirmar o lançamento aparece no iPhone, em pé e deitado | ✅ verificado pelo Luiz em produção, 03/09/2026 (defeito relatado por foto e corrigido na mesma sessão) |
+
+**Por que 8 a 10 não foram verificados.** O `.env` desta máquina existe, mas
 `NEXT_PUBLIC_FIREBASE_API_KEY`, `FIREBASE_CLIENT_EMAIL` e `FIREBASE_PRIVATE_KEY`
 estão vazios: `npm run test:integracao` para em "Could not load the default
 credentials", e as sondas autenticam contra o Firebase real. A verificação é
