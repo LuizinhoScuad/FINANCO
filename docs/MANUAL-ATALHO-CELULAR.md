@@ -7,14 +7,19 @@ um aplicativo: tela cheia, sem barra de navegador.
 
 Leva menos de um minuto. Faça uma vez e pronto.
 
+> **Versão para mandar à equipe:** este mesmo guia está publicado como página,
+> em <https://claude.ai/code/artifact/1763dd2f-3003-4e51-a191-6edae4806d7d> —
+> abre no celular e é o que se compartilha. Ao mudar um, mude o outro.
+
 ---
 
 ## iPhone e iPad (iOS)
 
-> ⚠️ **Precisa ser no Safari.** No iPhone, só o Safari sabe criar esse atalho.
-> Se você abrir o link pelo Chrome, pelo WhatsApp ou pelo Instagram, a opção
-> não aparece. Se caiu em outro navegador, toque nos três pontinhos e escolha
-> **"Abrir no Safari"**.
+> ⚠️ **Se você abriu o link pelo WhatsApp, a opção some.** É o erro mais
+> comum. WhatsApp, Instagram e Chrome abrem o site numa janela própria, e ali
+> o "Adicionar à Tela de Início" não existe — no iPhone, só o Safari sabe
+> criar esse atalho. Toque nos três pontinhos e escolha **"Abrir no Safari"**
+> antes de começar.
 
 1. Abra o **Safari** e entre no endereço acima.
 2. Faça login (veja *Primeiro acesso*, abaixo).
@@ -51,6 +56,11 @@ Quem nunca entrou precisa criar a conta antes:
 3. O **Luiz** libera o acesso pelo painel de Usuários.
 4. **Saia e entre de novo** depois de liberado. Sem isso a permissão não vale.
 
+> No primeiro acesso já liberado, o Financo pede os seus **dados para
+> reembolso** — nome do titular, CPF e chave PIX. É por eles que o financeiro
+> deposita o que você pagou do próprio bolso, e não dá para pular. Leva meio
+> minuto e é uma vez só; depois, dá para alterar em **Meus dados**.
+
 ---
 
 ## O que esperar depois de instalado
@@ -82,7 +92,8 @@ O pedido aparece com o selo **Aguardando** até o Luiz aprovar.
 ## Como mandar seu relatório pelo WhatsApp
 
 1. **Relatórios**, no menu.
-2. Escolha o período em **De** e **Até** (ou deixe em branco para tudo).
+2. Escolha o período pelos atalhos — **Tudo**, **Este mês**, **Últimos 30 dias**
+   — ou digite as datas em **De** e **Até**.
 3. Toque em **↓ PDF** ou **↓ Excel (XLSX)**.
 4. O arquivo baixa no celular. Abra o WhatsApp, escolha a conversa, toque no
    clipe de anexo → **Documento**, e selecione o arquivo.
@@ -100,6 +111,7 @@ duas vezes o que já recebeu.
 | No iPhone não aparece "Adicionar à Tela de Início" | Você não está no Safari. Abra o link no Safari. |
 | Pede login toda hora | A sessão expirou (5 dias). É só entrar de novo. |
 | "Sua conta está aguardando liberação" | Normal no primeiro acesso. Peça ao Luiz para liberar. |
+| Pede meus dados bancários e não deixa passar | É assim mesmo: sem chave PIX ninguém consegue ser reembolsado. Preencha e siga. |
 | Liberaram mas continua barrado | Saia da conta e entre de novo — a permissão só vale na sessão nova. |
 | A foto do recibo não sobe | Sinal fraco. O que você digitou **não se perde**: salve o lançamento e anexe o recibo depois, pelo botão **+ recibo** na lista. |
 | O ícone sumiu da tela | Foi apagado como qualquer aplicativo. Refaça o passo a passo. |
