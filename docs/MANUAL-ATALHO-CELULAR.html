@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<meta name="description" content="Como colocar o Financo na tela inicial do iPhone ou do Android e lançar despesas na rua.">
+<link rel="icon" href="/icon.jpg">
+<title>Financo no Celular</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Karla:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+
+<style>
+  :root {
+    --papel:        #f6f8f7;
+    --superficie:   #ffffff;
+    --superficie-2: #eef2f0;
+    --tinta:        #0f1613;
+    --tinta-suave:  #55665e;
+    --linha:        #d9e2dd;
+    --verde:        #00875a;
+    --verde-forte:  #006e49;
+    --verde-fraco:  #e3f5ec;
+    --alerta:       #9a5b00;
+    --alerta-fraco: #fdf1e0;
+    --alerta-linha: #e8c99a;
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --corpo:   "Karla", "Segoe UI", system-ui, sans-serif;
+    --mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:        #0a0f0d;
+      --superficie:   #121a17;
+      --superficie-2: #18221e;
+      --tinta:        #e8f0ec;
+      --tinta-suave:  #93a69d;
+      --linha:        #24322c;
+      --verde:        #00d98b;
+      --verde-forte:  #4fe8ab;
+      --verde-fraco:  #0d2b20;
+      --alerta:       #f0b862;
+      --alerta-fraco: #2a2113;
+      --alerta-linha: #4a3a1d;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --papel:        #0a0f0d;
+    --superficie:   #121a17;
+    --superficie-2: #18221e;
+    --tinta:        #e8f0ec;
+    --tinta-suave:  #93a69d;
+    --linha:        #24322c;
+    --verde:        #00d98b;
+    --verde-forte:  #4fe8ab;
+    --verde-fraco:  #0d2b20;
+    --alerta:       #f0b862;
+    --alerta-fraco: #2a2113;
+    --alerta-linha: #4a3a1d;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: var(--corpo);
+    font-size: 17px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 1.1rem 4rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .folha {
+    max-width: 40rem;
+    margin: 0 auto;
+  }
+
+  /* ---------- cabeçalho ---------- */
+
+  header {
+    padding: 2.5rem 0 1.75rem;
+    border-bottom: 2px solid var(--tinta);
+  }
+
+  .marca {
+    font-family: var(--display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--verde);
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(2rem, 8vw, 2.9rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    margin: 0 0 0.7rem;
+  }
+
+  .linha-fina {
+    font-size: 1.02rem;
+    color: var(--tinta-suave);
+    margin: 0;
+    max-width: 34rem;
+  }
+
+  /* ---------- endereço ---------- */
+
+  .endereco {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--superficie);
+    border: 1px solid var(--linha);
+    border-left: 3px solid var(--verde);
+    padding: 0.85rem 1rem;
+    margin: 1.5rem 0 0;
+  }
+
+  .endereco .rotulo {
+    font-family: var(--display);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    width: 100%;
+  }
+
+  .endereco a {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--tinta);
+    text-decoration: none;
+    border-bottom: 1px solid var(--verde);
+    word-break: break-all;
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+
+  .endereco a:hover { color: var(--verde); }
+
+  button.copiar {
+    font-family: var(--display);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--verde);
+    background: var(--verde-fraco);
+    border: 1px solid var(--verde);
+    border-radius: 2px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  button.copiar:hover { background: var(--verde); color: var(--papel); }
+  button.copiar:focus-visible { outline: 2px solid var(--verde); outline-offset: 2px; }
+
+  /* ---------- seções ---------- */
+
+  section { padding: 2.6rem 0 0; }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 1.42rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin: 0 0 0.3rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  h2 .navegador {
+    font-family: var(--display);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--verde);
+    background: var(--verde-fraco);
+    border: 1px solid var(--verde);
+    border-radius: 999px;
+    padding: 0.22rem 0.6rem;
+    white-space: nowrap;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 1.8rem 0 0.5rem;
+  }
+
+  .sub {
+    color: var(--tinta-suave);
+    font-size: 0.95rem;
+    margin: 0 0 1.2rem;
+  }
+
+  /* ---------- passos ---------- */
+
+  ol.passos {
+    list-style: none;
+    counter-reset: passo;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  /* O marcador é posicionado, não uma coluna de grade: num container de grade
+     ou de flex, cada trecho de texto e cada <strong> vira um item separado e
+     se espalha pelas células — as palavras saem empilhadas e sobrepostas. */
+  ol.passos > li {
+    counter-increment: passo;
+    position: relative;
+    padding-left: 2.6rem;
+    min-height: 1.75rem;
+  }
+
+  ol.passos > li::before {
+    content: counter(passo);
+    position: absolute;
+    left: 0;
+    top: 0.1rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--verde);
+    background: var(--verde-fraco);
+    border-radius: 50%;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  strong { font-weight: 700; }
+
+  .remate {
+    margin: 1.1rem 0 0;
+    padding-left: 2.6rem;
+    color: var(--tinta-suave);
+    font-size: 0.95rem;
+  }
+
+  /* ---------- avisos ---------- */
+
+  .aviso {
+    background: var(--alerta-fraco);
+    border: 1px solid var(--alerta-linha);
+    border-left: 3px solid var(--alerta);
+    padding: 0.9rem 1rem;
+    margin: 0 0 1.3rem;
+    font-size: 0.95rem;
+  }
+
+  .aviso .titulo {
+    font-family: var(--display);
+    font-weight: 700;
+    color: var(--alerta);
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+
+  .nota {
+    background: var(--superficie-2);
+    border-left: 3px solid var(--linha);
+    padding: 0.8rem 1rem;
+    margin: 1.2rem 0 0;
+    font-size: 0.93rem;
+    color: var(--tinta-suave);
+  }
+
+  /* ---------- listas simples ---------- */
+
+  ul.marcadores {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  ul.marcadores li {
+    padding-left: 1.15rem;
+    position: relative;
+  }
+
+  ul.marcadores li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 0.42rem;
+    height: 1px;
+    background: var(--verde);
+  }
+
+  /* ---------- socorro ---------- */
+
+  dl.socorro {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--linha);
+  }
+
+  dl.socorro dt {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 0.98rem;
+    padding: 1rem 0 0.2rem;
+  }
+
+  dl.socorro dd {
+    margin: 0;
+    padding: 0 0 1rem;
+    border-bottom: 1px solid var(--linha);
+    color: var(--tinta-suave);
+    font-size: 0.95rem;
+  }
+
+  /* ---------- nota técnica ---------- */
+
+  details.tecnica {
+    margin-top: 3rem;
+    border-top: 1px solid var(--linha);
+    padding-top: 1.4rem;
+  }
+
+  details.tecnica summary {
+    font-family: var(--display);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--tinta-suave);
+    cursor: pointer;
+  }
+
+  details.tecnica summary:focus-visible { outline: 2px solid var(--verde); outline-offset: 3px; }
+
+  details.tecnica .miolo {
+    font-size: 0.93rem;
+    color: var(--tinta-suave);
+    padding-top: 0.9rem;
+  }
+
+  details.tecnica code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--superficie-2);
+    padding: 0.1em 0.35em;
+    border-radius: 2px;
+    color: var(--tinta);
+  }
+
+  footer {
+    margin-top: 2.6rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--linha);
+    font-size: 0.82rem;
+    color: var(--tinta-suave);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="folha">
+
+  <header>
+    <p class="marca">Financo · Scuadra Embalagens</p>
+    <h1>O Financo na tela do seu celular</h1>
+    <p class="linha-fina">
+      Colocar o ícone na tela inicial faz o Financo abrir em tela cheia, sem a
+      barra do navegador — igual a um aplicativo. Leva menos de um minuto, e é
+      uma vez só.
+    </p>
+
+    <div class="endereco">
+      <span class="rotulo">Endereço</span>
+      <a id="url" href="https://financo--financo-260308.us-central1.hosted.app">financo--financo-260308.us-central1.hosted.app</a>
+      <button class="copiar" id="btn-copiar" type="button">Copiar</button>
+    </div>
+  </header>
+
+  <section>
+    <h2><span>iPhone e iPad</span> <span class="navegador">Safari</span></h2>
+    <p class="sub">O atalho só nasce pelo Safari — nenhum outro navegador do iPhone cria.</p>
+
+    <div class="aviso">
+      <span class="titulo">Se você abriu o link pelo WhatsApp, some a opção</span>
+      É o erro mais comum: WhatsApp, Instagram e Chrome abrem o site numa janela
+      própria, e ali o "Adicionar à Tela de Início" não existe. Toque nos três
+      pontinhos e escolha <strong>Abrir no Safari</strong> antes de começar.
+    </div>
+
+    <ol class="passos">
+      <li>Abra o <strong>Safari</strong> e entre no endereço acima.</li>
+      <li>Faça login. Nunca entrou? Veja <strong>Primeiro acesso</strong>, mais abaixo.</li>
+      <li>Toque no botão <strong>Compartilhar</strong> — o quadradinho com a seta para cima, no rodapé da tela.</li>
+      <li>Deslize a lista para baixo e toque em <strong>Adicionar à Tela de Início</strong>.</li>
+      <li>O nome sugerido é <strong>Financo</strong>. Toque em <strong>Adicionar</strong>, no canto superior.</li>
+    </ol>
+
+    <p class="remate">O ícone aparece junto com os outros aplicativos.</p>
+  </section>
+
+  <section>
+    <h2><span>Android</span> <span class="navegador">Chrome</span></h2>
+    <p class="sub">Alguns aparelhos oferecem o atalho sozinhos, numa faixa embaixo.</p>
+
+    <ol class="passos">
+      <li>Abra o <strong>Chrome</strong> e entre no endereço acima.</li>
+      <li>Faça login. Nunca entrou? Veja <strong>Primeiro acesso</strong>, mais abaixo.</li>
+      <li>Toque nos <strong>três pontinhos ⋮</strong>, no canto superior direito.</li>
+      <li>Toque em <strong>Adicionar à tela inicial</strong>. Em alguns aparelhos aparece como <strong>Instalar aplicativo</strong> — as duas servem.</li>
+      <li>Confirme em <strong>Adicionar</strong> ou <strong>Instalar</strong>.</li>
+    </ol>
+
+    <p class="remate">
+      Se o próprio Chrome oferecer uma faixa dizendo <em>"Adicionar Financo à
+      tela inicial"</em>, é só tocar nela — dá no mesmo.
+    </p>
+  </section>
+
+  <section>
+    <h2>Primeiro acesso</h2>
+    <p class="sub">Quem nunca entrou precisa criar a conta antes de instalar o atalho.</p>
+
+    <ol class="passos">
+      <li>Na tela de login, toque em <strong>Criar conta</strong> e informe nome, e-mail e senha.</li>
+      <li>A conta nasce <strong>aguardando liberação</strong>. Você vê uma tela de espera — isso é o esperado, não é erro.</li>
+      <li>O <strong>Luiz</strong> libera o acesso pelo painel de Usuários.</li>
+      <li><strong>Saia e entre de novo</strong> depois de liberado. Sem isso, a permissão não vale.</li>
+    </ol>
+
+    <div class="nota">
+      No primeiro acesso já liberado, o Financo pede os seus
+      <strong>dados para reembolso</strong> — nome do titular, CPF e chave PIX.
+      É por eles que o financeiro deposita o que você pagou do próprio bolso, e
+      não dá para pular. Leva meio minuto e é uma vez só.
+    </div>
+  </section>
+
+  <section>
+    <h2>Depois de instalado</h2>
+    <ul class="marcadores">
+      <li>Abre em <strong>tela cheia</strong>, sem barra de endereço — parece um aplicativo.</li>
+      <li><strong>Continua logado</strong>: a sessão dura cerca de 5 dias, então você não digita a senha toda vez.</li>
+      <li>Funciona igual ao navegador, incluindo <strong>tirar foto do comprovante</strong> e a leitura automática do valor.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Lançar uma despesa na rua</h2>
+    <p class="sub">O caminho todo, do bolso ao pedido de reembolso.</p>
+
+    <ol class="passos">
+      <li>Abra o Financo pelo ícone.</li>
+      <li>Vá em <strong>Transações</strong> e toque em <strong>+ Nova</strong>.</li>
+      <li>Toque em <strong>Escanear Recibo (OCR)</strong> e fotografe o comprovante. O valor e a data costumam vir preenchidos sozinhos — <strong>confira sempre</strong>.</li>
+      <li>Preencha a <strong>descrição</strong> (ex.: <em>Visita no cliente Mocotó</em>), a <strong>categoria</strong> e a <strong>conta</strong>.</li>
+      <li>Deixe <strong>"Pedir reembolso da empresa"</strong> marcada — é ela que manda o lançamento para a fila de aprovação. Desmarque só se o gasto for particular seu.</li>
+      <li>Toque em <strong>Finalizar Lançamento</strong>.</li>
+    </ol>
+
+    <p class="remate">O pedido fica com o selo <strong>Aguardando</strong> até o Luiz aprovar.</p>
+  </section>
+
+  <section>
+    <h2>Mandar seu relatório pelo WhatsApp</h2>
+
+    <ol class="passos">
+      <li>Toque em <strong>Relatórios</strong>, no menu.</li>
+      <li>Escolha o período pelos atalhos — <strong>Tudo</strong>, <strong>Este mês</strong>, <strong>Últimos 30 dias</strong> — ou digite as datas em <strong>De</strong> e <strong>Até</strong>.</li>
+      <li>Toque em <strong>↓ PDF</strong> ou <strong>↓ Excel (XLSX)</strong>.</li>
+      <li>O arquivo baixa no celular. No WhatsApp, abra a conversa, toque no clipe → <strong>Documento</strong> e escolha o arquivo.</li>
+    </ol>
+
+    <div class="nota">
+      No relatório, o que <strong>já foi atendido</strong> aparece somado à parte
+      do que está <strong>a receber</strong>. Os dois nunca entram no mesmo
+      total — é o que impede alguém de cobrar de novo o que já recebeu.
+    </div>
+  </section>
+
+  <section>
+    <h2>Se algo der errado</h2>
+
+    <dl class="socorro">
+      <dt>No iPhone não aparece "Adicionar à Tela de Início"</dt>
+      <dd>Você não está no Safari. Abra o link no Safari e refaça.</dd>
+
+      <dt>Pede login toda hora</dt>
+      <dd>A sessão expirou — ela dura 5 dias. É só entrar de novo.</dd>
+
+      <dt>"Sua conta está aguardando liberação"</dt>
+      <dd>Normal no primeiro acesso. Peça ao Luiz para liberar.</dd>
+
+      <dt>Liberaram, mas continua barrado</dt>
+      <dd>Saia da conta e entre de novo. A permissão só vale na sessão nova.</dd>
+
+      <dt>A foto do recibo não sobe</dt>
+      <dd>Sinal fraco. O que você digitou <strong>não se perde</strong>: salve o lançamento e anexe o recibo depois, pelo botão <strong>+ recibo</strong> na lista.</dd>
+
+      <dt>O ícone sumiu da tela</dt>
+      <dd>Foi apagado como qualquer aplicativo. Refaça o passo a passo.</dd>
+    </dl>
+  </section>
+
+  <details class="tecnica">
+    <summary>Nota técnica — para o Luiz</summary>
+    <div class="miolo">
+      <p>
+        O app já está preparado: <code>public/manifest.json</code> com
+        <code>display: standalone</code>, <code>start_url</code> em
+        <code>/dashboard</code>, e <code>appleWebApp.capable</code> no
+        <code>src/app/layout.tsx</code>. Nada precisa ser feito para o atalho
+        funcionar.
+      </p>
+      <p>
+        <strong>Ressalva medida:</strong> o <code>public/icon.jpg</code> tem
+        225×225 px, mas o manifest o declara em 192×192 e 512×512. No iPhone
+        funciona — o iOS redimensiona. No Android, o Chrome exige um ícone de
+        512 px para oferecer o "Instalar aplicativo" completo; como o arquivo
+        real é menor, alguns aparelhos oferecem apenas "Adicionar à tela
+        inicial", que cria um atalho igualmente funcional, porém sem tratar o
+        app como instalado.
+      </p>
+      <p>
+        Destravar o "Instalar" exigiria gerar dois PNGs de verdade (192 e 512) e
+        apontar cada um no manifest. É mudança pequena, mas mexe em arquivo
+        publicado — fica como pendência, não feita.
+      </p>
+    </div>
+  </details>
+
+  <footer>
+    Financo · ferramenta interna da Scuadra Embalagens.
+    Dúvida que não está aqui, fale com o Luiz.
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var btn = document.getElementById("btn-copiar");
+    var url = document.getElementById("url");
+    if (!btn || !url) return;
+
+    btn.addEventListener("click", function () {
+      var texto = url.getAttribute("href");
+      var aviso = function (msg) {
+        btn.textContent = msg;
+        setTimeout(function () { btn.textContent = "Copiar"; }, 2000);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(
+          function () { aviso("Copiado"); },
+          function () { aviso("Copie do link"); }
+        );
+      } else {
+        aviso("Copie do link");
+      }
+    });
+  })();
+</script>
+</body>
+</html>
