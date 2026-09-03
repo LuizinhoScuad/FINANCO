@@ -627,13 +627,10 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             {/* Modal Form */}
             {showForm && (
                 <div
-                    style={{
-                        position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)",
-                        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "1rem"
-                    }}
+                    className="modal-overlay"
                     onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
                 >
-                    <div className="card animate-scale-up" style={{ width: "100%", maxWidth: "520px", display: "flex", flexDirection: "column", gap: "1.25rem", maxHeight: "90vh", overflowY: "auto" }}>
+                    <div className="card animate-scale-up modal-card">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>Nova Transação</h2>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -845,7 +842,12 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                 <textarea name="notes" className="input-base" placeholder="Observações adicionais..." rows={2} style={{ resize: "none" }} />
                             </div>
 
-                            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                            {/* Ações grudadas no rodapé do modal: no iPhone em
+                                pé ou deitado, o formulário é mais alto que a
+                                tela, e o botão de confirmar ficava no fim de
+                                uma rolagem que nem sempre existia. Agora ele
+                                está sempre à vista. */}
+                            <div className="modal-acoes">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
                                 <button type="submit" className="btn btn-primary" disabled={isPending || ocrLoading}>
                                     {isPending ? "Salvando..." : ocrLoading ? "⏳ Aguarde o recibo..." : "Finalizar Lançamento"}
@@ -869,6 +871,95 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                 @keyframes scaleUp {
                     from { transform: scale(0.95); opacity: 0; }
                     to { transform: scale(1); opacity: 1; }
+                }
+
+                /* --- modal de lançamento ---------------------------------
+                   O botão de confirmar sumia no iPhone. Duas causas:
+
+                   1. 'vh' no iOS mede a tela INTEIRA, ignorando a barra de
+                      endereço e a de ferramentas do Safari. Um modal com
+                      90vh passa por baixo delas — e, como o navegador acha
+                      que tudo coube, não há rolagem para alcançar o fim.
+                      Deitado, onde sobra pouca altura, o rodapé inteiro
+                      ficava fora. 'dvh' mede o que está de fato visível.
+
+                   2. Mesmo com a altura certa, confirmar dependia de rolar
+                      até o fim de um formulário longo. Agora as ações ficam
+                      grudadas no rodapé (position: sticky), sempre à vista.
+
+                   O overlay rola por fora como rede de segurança: em
+                   navegador antigo, sem 'dvh', o modal continua alcançável.  */
+                .modal-overlay {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 50;
+                    background-color: rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    padding: 1rem;
+                    overflow-y: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+                .modal-card {
+                    /* 'margin: auto' centraliza quando cabe e permite rolar
+                       quando não cabe — com 'align-items: center' o topo do
+                       modal fica inalcançável. */
+                    margin: auto;
+                    width: 100%;
+                    max-width: 520px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.25rem;
+                    overflow-y: auto;
+                    /* A altura vem da variável abaixo. Declarar 'max-height'
+                       duas vezes na mesma regra não serviria de reserva: o
+                       minificador do build descarta a primeira — conferido no
+                       CSS gerado. Por isso o fallback vive num '@supports',
+                       que ele não tem como colapsar. */
+                    max-height: var(--altura-modal);
+                }
+                .modal-card { --altura-modal: 90vh; }
+                @media (max-width: 767px) { .modal-card { --altura-modal: 94vh; } }
+                @media (max-height: 500px) { .modal-card { --altura-modal: 97vh; } }
+
+                /* 'dvh' desconta as barras do Safari; 'vh', não. */
+                @supports (height: 100dvh) {
+                    .modal-card { --altura-modal: 90dvh; }
+                    @media (max-width: 767px) { .modal-card { --altura-modal: 94dvh; } }
+                    @media (max-height: 500px) { .modal-card { --altura-modal: 97dvh; } }
+                }
+                .modal-acoes {
+                    position: sticky;
+                    bottom: 0;
+                    z-index: 1;
+                    display: flex;
+                    gap: 0.75rem;
+                    align-items: center;
+                    justify-content: flex-end;
+                    background-color: var(--color-surface);
+                    border-top: 1px solid var(--color-border);
+                    /* Sangra o padding do .card para encostar nas bordas. */
+                    margin: 0.25rem -1.25rem -1.25rem;
+                    padding: 0.875rem 1.25rem;
+                    /* Faixa de gestos do iPhone. */
+                    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom));
+                }
+                @media (max-width: 767px) {
+                    .modal-overlay { padding: 0.5rem; }
+                    /* No celular o alvo de toque vale mais que a simetria: o
+                       botão que conclui ocupa a largura que sobra. */
+                    .modal-acoes button[type="submit"] { flex: 1; }
+                }
+                /* Deitado, a altura é o recurso escasso: o modal ocupa o que
+                   der e as folgas encolhem para sobrar espaço ao formulário. */
+                @media (max-height: 500px) {
+                    .modal-overlay { padding: 0.35rem; }
+                    .modal-card { gap: 0.75rem; padding: 0.875rem; }
+                    .modal-acoes {
+                        margin: 0.25rem -0.875rem -0.875rem;
+                        padding: 0.625rem 0.875rem;
+                        padding-bottom: calc(0.625rem + env(safe-area-inset-bottom));
+                    }
                 }
             `}</style>
         </div>

@@ -89,6 +89,38 @@ máquina existe, mas `NEXT_PUBLIC_FIREBASE_API_KEY`, `FIREBASE_CLIENT_EMAIL` e
 `FIREBASE_PRIVATE_KEY` estão vazios — `npm run test:integracao` para em "Could
 not load the default credentials", e as sondas autenticam contra o Firebase.
 
+**Correção na mesma sessão — o botão de confirmar sumia no iPhone.**
+
+O Luiz mostrou por foto: no formulário de lançamento, o botão "Finalizar
+Lançamento" não aparecia em um dos iPhones. Duas causas somadas:
+
+1. O modal usava `max-height: 90vh`. No iOS, `vh` mede a tela **inteira**,
+   ignorando a barra de endereço e a de ferramentas do Safari — o modal se
+   estendia por baixo delas e, como o navegador considerava que tudo coubera,
+   não havia rolagem para alcançar o fim. Deitado, onde sobra pouca altura, o
+   rodapé inteiro ficava fora. Passou a usar `dvh`, que mede o que está de fato
+   visível, **com fallback em `vh` dentro de `@supports`**: declarar as duas na
+   mesma regra não funcionaria — conferido no CSS gerado, o minificador do
+   build descarta a primeira.
+2. Mesmo com a altura certa, confirmar dependia de rolar até o fim de um
+   formulário longo. As ações agora ficam **grudadas no rodapé do modal**
+   (`position: sticky`), sempre à vista, respeitando a faixa de gestos do
+   iPhone (`env(safe-area-inset-bottom)`). No celular, o botão que conclui
+   ocupa a largura que sobra.
+
+Também: o overlay passou a centralizar por `margin: auto` em vez de
+`align-items: center` — com o conteúdo mais alto que a tela, centralizar por
+flex deixa o topo inalcançável. Mesma troca aplicada em
+`/dados-para-reembolso`, que tem formulário longo pelo mesmo motivo. Em telas
+baixas (paisagem), as folgas do modal encolhem para sobrar espaço ao formulário.
+
+Arquivos: `src/app/(app)/transacoes/TransacoesClient.tsx` ·
+`src/app/dados-para-reembolso/page.tsx`.
+
+**NÃO VERIFICADO:** a correção não foi vista rodando num iPhone real — o que
+foi conferido de fato é o CSS gerado no build (fallback preservado, `@supports`,
+`sticky`, `env()`). Confirmar no aparelho depois do deploy.
+
 **Pendências:**
 - Com credenciais: `npm run test:integracao`, `npm run test:fumaca` (traz as
   checagens novas do portão) e `npm run test:responsivo` (agora inclui

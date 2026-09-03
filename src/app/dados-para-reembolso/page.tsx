@@ -26,12 +26,13 @@ export default async function DadosParaReembolsoPage() {
       style={{
         minHeight: "100vh",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         padding: "1.5rem",
       }}
     >
-      <div className="card" style={{ maxWidth: "560px", width: "100%" }}>
+      {/* `margin: auto` no lugar de `align-items: center`: com o formulário
+          mais alto que a tela — celular deitado, teclado aberto — centralizar
+          por flex deixa o topo do cartão inalcançável. */}
+      <div className="card" style={{ maxWidth: "560px", width: "100%", margin: "auto" }}>
         <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>◈</div>
 
         <h1 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>Seus dados para reembolso</h1>
