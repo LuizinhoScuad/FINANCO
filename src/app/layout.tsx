@@ -20,6 +20,9 @@ export const viewport: Viewport = {
   themeColor: "#00d98b",
   width: "device-width",
   initialScale: 1,
+  // Sem isto, `env(safe-area-inset-*)` vale zero e as folgas que reservamos
+  // para a faixa de gestos do iPhone não reservam nada.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -116,7 +116,7 @@ export function CategoriasClient({ categories }: { categories: Category[] }) {
                     <div className="card" style={{ width: "100%", maxWidth: "420px", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
                         <h2 style={{ fontSize: "1rem" }}>Nova Categoria</h2>
                         <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                            <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label style={{ fontSize: "0.75rem", color: "var(--color-muted)", display: "block", marginBottom: "0.375rem" }}>Nome</label>
                                     <input name="name" className="input-base" placeholder="Ex: Alimentação" required />

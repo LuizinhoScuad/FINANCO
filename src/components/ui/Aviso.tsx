@@ -103,7 +103,7 @@ export function ConfirmarDestrutivo({
   return (
     <div
       className="overlay-modal"
-      style={{ zIndex: 60 }}
+      style={{ zIndex: 160 }}
       onClick={(e) => e.target === e.currentTarget && !ocupado && onCancelar()}
     >
       <div className="card" style={{ width: "100%", maxWidth: "440px", borderTop: "3px solid var(--color-danger)" }}>

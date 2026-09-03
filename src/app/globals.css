@@ -96,7 +96,10 @@
   .overlay-modal {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    /* Acima da navegação inferior (z-index 100). Com 50, a barra de 64px
+       pintava por cima do rodapé do modal — justamente onde fica o botão que
+       conclui o lançamento. */
+    z-index: 150;
     display: flex;
     padding: 1rem;
     background-color: rgba(0, 0, 0, 0.8);

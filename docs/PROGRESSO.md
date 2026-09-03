@@ -188,6 +188,33 @@ protegida desde a fase anterior.
 Arquivos: `src/app/globals.css` · `TransacoesClient.tsx` · `CategoriasClient.tsx` ·
 `ContasClient.tsx` · `OrcamentosClient.tsx` · `AprovacoesClient.tsx` · `Aviso.tsx`.
 
+**Fechamento da sessão (16:36) — o que a revisão de código encontrou.**
+
+Com as correções já no ar e confirmadas pelo Luiz, a revisão do diff apontou
+três defeitos reais que passariam despercebidos:
+
+1. **O botão continuava coberto — por outro motivo.** O modal tinha
+   `z-index: 50` e a navegação inferior tem `100`: a barra de 64px pintava por
+   cima do rodapé do modal, exatamente onde fica "Finalizar Lançamento". No
+   aparelho do Luiz escapou por poucos pixels (o cartão para em 94dvh), mas em
+   tela menor cobriria. `.overlay-modal` foi para `z-index: 150`, e a
+   confirmação destrutiva para 160.
+2. **`env(safe-area-inset-*)` valia zero.** Faltava `viewportFit: "cover"` no
+   `viewport` de `src/app/layout.tsx`, então toda folga reservada para a faixa
+   de gestos do iPhone — a nova e as duas que já existiam na navegação e no
+   layout — não reservava nada.
+3. **Uma grade ficou para trás:** o Nome/Tipo da Nova Categoria era a única
+   grade de duas colunas sem `grid-campos`, e seguiria espremida abaixo de
+   420px.
+
+Registrado e **não corrigido** (Art. 3, para não crescer o escopo no
+fechamento): o build reescreve as media queries do styled-jsx em sintaxe de
+intervalo (`@media (width<=767px)`), que o Safari só entende a partir da 16.4 —
+em iOS 15.4 a 16.3 o ramo de celular do modal de lançamento é ignorado. O
+`globals.css` não é afetado, então a trava lateral e o `grid-campos` valem em
+qualquer versão. E o rodapé fixo, por ter margem negativa, pode ter os últimos
+20px aparados pelo recorte do cartão — plausível, quer conferência no aparelho.
+
 **Pendências:**
 - Com credenciais: `npm run test:integracao`, `npm run test:fumaca` (traz as
   checagens novas do portão) e `npm run test:responsivo` (agora inclui
