@@ -52,7 +52,12 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
   const [isPending, startTransition] = useTransition();
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
-  const [previa, setPrevia] = useState<{ bloco: Bloco; quantidade: number; totalCents: number } | null>(null);
+  const [previa, setPrevia] = useState<{
+    bloco: Bloco;
+    quantidade: number;
+    totalCents: number;
+    semDadosBancarios: boolean;
+  } | null>(null);
 
   // --- pagos: o que veio do servidor e os filtros de tela ---------------------
   const [pagos, setPagos] = useState(pagosIniciais);
@@ -349,6 +354,15 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
                       <strong>{bloco.nome}</strong>, de {formatDate(bloco.desde)} a {formatDate(bloco.ate)}, somando{" "}
                       <strong style={{ color: "var(--color-accent)" }}>{formatCurrency(previa.totalCents / 100)}</strong>.
                     </p>
+
+                    {previa.semDadosBancarios && (
+                      <p style={{ fontSize: "0.82rem", color: "#f59e0b", marginTop: "0.5rem" }}>
+                        ⚠ {bloco.nome} ainda não cadastrou os dados para reembolso — o
+                        comprovante sairá sem PIX e sem conta. Dá para fechar assim
+                        mesmo, mas quem for depositar vai precisar perguntar.
+                      </p>
+                    )}
+
                     <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
                       <button className="btn btn-primary" onClick={confirmarFechamento} disabled={isPending}>
                         Confirmar pagamento

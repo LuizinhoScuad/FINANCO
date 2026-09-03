@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getMonthSummary, getMonthlyHistory, getForecastHistory, getExpensesByCategory, getExpensesByCategoryYear, getTransactions } from "@/actions/transactions";
 import { getTotalBalance } from "@/actions/accounts";
 import { formatCurrency, formatDate, currentMonth } from "@/lib/utils";
@@ -24,11 +25,25 @@ export default async function DashboardPage() {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* Header */}
-            <div className="animate-fade-up">
-                <h1 style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>Dashboard</h1>
-                <p style={{ color: "var(--color-muted)", fontSize: "0.875rem" }}>
-                    {new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(year, month - 1))}
-                </p>
+            <div
+                className="animate-fade-up"
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", flexWrap: "wrap" }}
+            >
+                <div>
+                    <h1 style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>Dashboard</h1>
+                    <p style={{ color: "var(--color-muted)", fontSize: "0.875rem" }}>
+                        {new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(year, month - 1))}
+                    </p>
+                </div>
+
+                {/* No celular o menu inferior já está cheio; este é o caminho
+                    para "Meus dados" de quem usa o app na rua. */}
+                <Link
+                    href="/perfil"
+                    style={{ fontSize: "0.8rem", color: "var(--color-muted)", textDecoration: "none" }}
+                >
+                    ◈ Meus dados para reembolso →
+                </Link>
             </div>
 
             {/* Summary Cards */}

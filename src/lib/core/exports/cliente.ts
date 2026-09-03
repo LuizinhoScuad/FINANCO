@@ -10,6 +10,9 @@
  * pacote inicial de quem só quer registrar um lançamento na rua.
  */
 
+import { descreverDadosBancarios } from "@/lib/core/dados-bancarios";
+import type { DadosBancarios } from "@/types";
+
 const MARCA = { r: 0, g: 217, b: 139 };
 
 function carimbo() {
@@ -68,6 +71,16 @@ async function montarPDF(opcoes: {
   if (opcoes.resumo?.length) {
     // @ts-expect-error — autoTable grava a posição final no documento
     let y = (doc.lastAutoTable?.finalY ?? 40) + 10;
+
+    // O resumo cresceu quando o comprovante passou a trazer os dados de
+    // depósito: sem esta conta, as últimas linhas — justamente a chave PIX —
+    // eram escritas fora da página e sumiam do arquivo.
+    const alturaNecessaria = 6 + opcoes.resumo.length * 5;
+    const limite = doc.internal.pageSize.getHeight() - 15;
+    if (y + alturaNecessaria > limite) {
+      doc.addPage();
+      y = 20;
+    }
 
     doc.setFontSize(10);
     doc.setTextColor(20, 20, 20);
@@ -245,11 +258,32 @@ export async function exportarPedidosXLSX(linhas: LinhaPedido[], base: string) {
   });
 }
 
-/** Comprovante de fechamento — o PDF que o gestor manda para a pessoa. */
+/**
+ * Comprovante de fechamento — o PDF que o gestor manda para a pessoa.
+ *
+ * É também o documento que o financeiro usa para depositar: por isso traz o
+ * bloco "Dados para depósito", com titular, CPF e chave PIX. Sem ele, quem paga
+ * precisa perguntar os dados por fora a cada pagamento.
+ */
 export async function exportarComprovanteDeLote(
-  lote: { userName: string; periodStart: Date; periodEnd: Date; paidAt: Date | null; expenseCount: number; totalCents: number },
+  lote: {
+    userName: string;
+    periodStart: Date;
+    periodEnd: Date;
+    paidAt: Date | null;
+    expenseCount: number;
+    totalCents: number;
+    dadosBancarios?: DadosBancarios | null;
+  },
   linhas: LinhaPedido[],
 ) {
+  const deposito = lote.dadosBancarios
+    ? [
+        { rotulo: "DADOS PARA DEPÓSITO", valor: "" },
+        ...descreverDadosBancarios(lote.dadosBancarios),
+      ]
+    : [{ rotulo: "Dados para depósito", valor: "não cadastrados" }];
+
   await montarPDF({
     titulo: "Comprovante de reembolso",
     subtitulo: `${lote.userName} · período ${dataCurta(lote.periodStart)} a ${dataCurta(lote.periodEnd)}`,
@@ -265,6 +299,7 @@ export async function exportarComprovanteDeLote(
       { rotulo: "Pedidos atendidos", valor: String(lote.expenseCount) },
       { rotulo: "Pago em", valor: lote.paidAt ? dataCurta(lote.paidAt) : "—" },
       { rotulo: "TOTAL PAGO", valor: dinheiro(lote.totalCents / 100) },
+      ...deposito,
     ],
     arquivo: nomeArquivo(`reembolso-${lote.userName.toLowerCase().replace(/\s+/g, "-")}`, "pdf"),
   });

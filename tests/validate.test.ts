@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ArquivoDeBackup, descreverFalha, verificarIntegridade } from "@/lib/guardrails/validate";
+import {
+  ArquivoDeBackup,
+  DadosBancariosEntrada,
+  descreverFalha,
+  verificarIntegridade,
+} from "@/lib/guardrails/validate";
 
 const contaValida = {
   id: "c1",
@@ -121,6 +126,95 @@ describe("schema do arquivo de backup", () => {
     expect(msg).toContain("accounts");
     expect(msg).not.toContain("{");
     expect(msg).not.toContain("fieldErrors");
+  });
+});
+
+describe("dados para reembolso", () => {
+  /** O formulário manda tudo como texto, inclusive os campos em branco. */
+  const soPix = {
+    titular: "Maria Souza",
+    cpf: "529.982.247-25",
+    pixTipo: "TELEFONE",
+    pixChave: "(11) 91234-5678",
+    banco: "",
+    agencia: "",
+    conta: "",
+    tipoConta: "",
+  };
+
+  it("aceita só PIX e normaliza o que grava", () => {
+    const r = DadosBancariosEntrada.safeParse(soPix);
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+
+    expect(r.data.cpf).toBe("52998224725");
+    expect(r.data.pixChave).toBe("+5511912345678");
+    expect(r.data.banco).toBeNull();
+    expect(r.data.tipoConta).toBeNull();
+  });
+
+  it("aceita a conta bancária completa", () => {
+    const r = DadosBancariosEntrada.safeParse({
+      ...soPix,
+      banco: "341 Itaú",
+      agencia: "0123",
+      conta: "45678-9",
+      tipoConta: "POUPANCA",
+    });
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    expect(r.data.conta).toBe("45678-9");
+    expect(r.data.tipoConta).toBe("POUPANCA");
+  });
+
+  it("recusa CPF inválido apontando o campo", () => {
+    const r = DadosBancariosEntrada.safeParse({ ...soPix, cpf: "529.982.247-24" });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.flatten().fieldErrors.cpf?.[0]).toMatch(/CPF/i);
+  });
+
+  it("recusa chave que não combina com o tipo", () => {
+    const r = DadosBancariosEntrada.safeParse({
+      ...soPix,
+      pixTipo: "EMAIL",
+      pixChave: "não é e-mail",
+    });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.flatten().fieldErrors.pixChave?.[0]).toMatch(/e-mail/i);
+  });
+
+  /**
+   * Meia conta bancária não deposita nada: gravar agência sem banco só
+   * produziria um comprovante que parece completo e não serve.
+   */
+  it("recusa conta bancária pela metade, dizendo o que falta", () => {
+    const r = DadosBancariosEntrada.safeParse({ ...soPix, agencia: "0123" });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+
+    const campos = r.error.flatten().fieldErrors;
+    expect(campos.banco?.[0]).toMatch(/banco, agência e conta/i);
+    expect(campos.conta?.[0]).toMatch(/banco, agência e conta/i);
+    expect(campos.agencia).toBeUndefined();
+  });
+
+  it("exige o tipo quando há conta", () => {
+    const r = DadosBancariosEntrada.safeParse({
+      ...soPix,
+      banco: "341 Itaú",
+      agencia: "0123",
+      conta: "45678-9",
+    });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(r.error.flatten().fieldErrors.tipoConta?.[0]).toMatch(/corrente ou poupança/i);
+  });
+
+  it("recusa titular vazio e tipo de chave inventado", () => {
+    expect(DadosBancariosEntrada.safeParse({ ...soPix, titular: "" }).success).toBe(false);
+    expect(DadosBancariosEntrada.safeParse({ ...soPix, pixTipo: "BITCOIN" }).success).toBe(false);
   });
 });
 

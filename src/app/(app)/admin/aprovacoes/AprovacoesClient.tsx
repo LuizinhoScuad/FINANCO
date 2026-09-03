@@ -30,7 +30,11 @@ export function AprovacoesClient({ fila, equipe }: Props) {
   const [pessoa, setPessoa] = useState("");
   const [desde, setDesde] = useState("");
   const [ate, setAte] = useState("");
-  const [previa, setPrevia] = useState<{ quantidade: number; totalCents: number } | null>(null);
+  const [previa, setPrevia] = useState<{
+    quantidade: number;
+    totalCents: number;
+    semDadosBancarios: boolean;
+  } | null>(null);
 
   // Filtro da fila. Com uma pessoa só o painel é curto; com sete, decidir
   // pedido a pedido misturando todo mundo vira caça ao tesouro.
@@ -302,6 +306,14 @@ export function AprovacoesClient({ fila, equipe }: Props) {
                   <strong>{previa.quantidade}</strong> pedido(s) aprovado(s), somando{" "}
                   <strong style={{ color: "var(--color-accent)" }}>{formatCurrency(previa.totalCents / 100)}</strong>.
                 </p>
+
+                {previa.semDadosBancarios && (
+                  <p style={{ fontSize: "0.82rem", color: "#f59e0b", marginTop: "0.5rem" }}>
+                    ⚠ Esta pessoa ainda não cadastrou os dados para reembolso — o
+                    comprovante sairá sem PIX e sem conta.
+                  </p>
+                )}
+
                 <button className="btn btn-primary" onClick={confirmarFechamento} disabled={isPending} style={{ marginTop: "0.75rem" }}>
                   Confirmar fechamento
                 </button>

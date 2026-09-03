@@ -22,6 +22,9 @@ const links: ItemDeMenu[] = [
   { href: "/contas", label: "Contas", icon: "▦" },
   { href: "/categorias", label: "Categorias", icon: "⌘" },
   { href: "/orcamentos", label: "Orçamentos", icon: "◎" },
+  // Por último e sem contador: é uma tela que se visita uma vez e depois só
+  // quando muda de banco.
+  { href: "/perfil", label: "Meus dados", icon: "◈" },
 ];
 
 const linksAdmin: ItemDeMenu[] = [

@@ -19,6 +19,19 @@ import {
 
 const UID = "zzz-teste-ciclo";
 const ADMIN = { uid: "zzz-teste-gestor", nome: "Gestor de Teste", papel: "ADMIN" as const };
+
+/** Para onde o dinheiro iria — copiado para o lote no fechamento (Fase 11). */
+const DADOS_BANCARIOS = {
+  titular: "Ciclo de Teste",
+  cpf: "52998224725",
+  pixTipo: "EMAIL" as const,
+  pixChave: "ciclo@exemplo.com.br",
+  banco: null,
+  agencia: null,
+  conta: null,
+  tipoConta: null,
+  atualizadoEm: new Date(),
+};
 const raiz = () => adminDb.collection("users").doc(UID);
 const nomes = new Map([[UID, "Ciclo de Teste"]]);
 
@@ -125,7 +138,7 @@ describe("ciclo do reembolso, ponta a ponta", () => {
   it("o fechamento marca todos de uma vez e cria o lote", async () => {
     const r = await fecharLote(
       { uid: ADMIN.uid, nome: ADMIN.nome },
-      { userId: UID, userName: "Ciclo de Teste" },
+      { userId: UID, userName: "Ciclo de Teste", dadosBancarios: DADOS_BANCARIOS },
       JANELA,
     );
     expect(r.quantidade).toBe(2);
@@ -146,11 +159,20 @@ describe("ciclo do reembolso, ponta a ponta", () => {
     expect(lote?.totalCents).toBe(3030);
     expect(lote?.expenseCount).toBe(2);
     expect(lote?.status).toBe("PAGO");
+
+    // A cópia dos dados de depósito viaja junto, na mesma escrita: é o que o
+    // comprovante mostra, e o que prova para onde o dinheiro foi enviado.
+    expect(lote?.dadosBancarios?.pixChave).toBe(DADOS_BANCARIOS.pixChave);
+    expect(lote?.dadosBancarios?.cpf).toBe(DADOS_BANCARIOS.cpf);
   });
 
   it("fechar de novo o mesmo período não acha nada para pagar", async () => {
     await expect(
-      fecharLote({ uid: ADMIN.uid, nome: ADMIN.nome }, { userId: UID, userName: "Ciclo de Teste" }, JANELA),
+      fecharLote(
+        { uid: ADMIN.uid, nome: ADMIN.nome },
+        { userId: UID, userName: "Ciclo de Teste", dadosBancarios: DADOS_BANCARIOS },
+        JANELA,
+      ),
     ).rejects.toThrow(/não há pedidos aprovados/i);
   });
 

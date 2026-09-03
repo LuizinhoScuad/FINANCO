@@ -1,14 +1,20 @@
 ---
 programa: financo
 tipo: spec
-versao: 4.0
+versao: 4.1
 criado: 2026-08-09
-revisado: 2026-08-09
+revisado: 2026-09-03
 herda: ../00-CONSTITUTION.md
 referencia: 02-PLAN.md
 ---
 
 # SPEC — Financo v4
+
+> **Revisão v4.1 (03/09/2026).** O sistema aprovava e fechava o pagamento, mas
+> não sabia **para onde** o dinheiro ia: o comprovante que a Regiane usa para
+> depositar trazia só o nome da pessoa. A v4.1 acrescenta os **dados para
+> reembolso** (PIX e conta), com portão obrigatório no acesso — RF-57 a RF-63.
+> Nada do que existia mudou de significado.
 
 > **Revisão v4 (09/08/2026).** O reembolso **voltou**, remontado sobre
 > Transações em vez de num módulo paralelo. A v3 havia retirado o módulo inteiro
@@ -122,6 +128,23 @@ pesam nas decisões desta spec:
 | RF-54 | O que **já foi atendido** aparece destacado e somado à parte do que está a receber — na tela e no arquivo exportado |
 | RF-55 | Histórico dos pagamentos fechados, com o comprovante em PDF de cada um |
 
+### Dados para reembolso
+
+O pagamento sai **por fora** do sistema: o gestor fecha o lote, baixa o
+comprovante em PDF e o financeiro da Scuadra deposita. Sem os dados de depósito
+no comprovante, quem paga precisa perguntar a cada pessoa — e o sistema, que
+sabe tudo sobre a despesa, não sabia para onde mandar o dinheiro.
+
+| ID | Requisito |
+|---|---|
+| RF-57 | Toda pessoa ativa cadastra os **dados para reembolso**: titular (padrão: o nome do perfil), CPF com dígitos verificadores conferidos, tipo e chave PIX **obrigatórios** (CPF, CNPJ, e-mail, telefone ou aleatória, normalizados) e, opcionalmente, banco, agência, conta com dígito e tipo (corrente/poupança) — os dados bancários entram **todos ou nenhum** |
+| RF-58 | **Portão obrigatório:** conta ATIVA sem dados cadastrados cai na tela "Seus dados para reembolso" no próximo acesso e só entra no sistema depois de salvar. Não há "pular". Vale também para o administrador. O portão é decidido no servidor a cada navegação (Art. 5) |
+| RF-59 | A pessoa altera os próprios dados quando quiser, em "Meus dados", pelo mesmo formulário. Ninguém edita os dados de outra pessoa — nem o administrador (fora de escopo na v4.1) |
+| RF-60 | Os dados são visíveis **apenas** ao dono e ao administrador (Art. 4). Não aparecem na tela de Aprovados, na fila de aprovação nem no PDF/XLSX de pedidos; nunca chegam ao navegador de outro colaborador |
+| RF-61 | Em Admin › Usuários o administrador vê os dados de cada pessoa (recolhidos por padrão) e um marcador em quem ainda não cadastrou |
+| RF-62 | Ao fechar um lote, uma **cópia** dos dados da pessoa é gravada no lote, na mesma escrita atômica (Art. 2). O comprovante de reembolso em PDF traz o bloco "Dados para depósito" a partir dessa cópia; lote fechado antes desta versão, sem cópia, usa o cadastro atual da pessoa |
+| RF-63 | A prévia de fechamento avisa quando a pessoa não tem dados cadastrados, sem impedir o fechamento |
+
 ### Finanças pessoais
 
 | ID | Requisito |
@@ -173,6 +196,7 @@ v4 é outra construção.
 | RNF-11 | O modelo novo convive com o antigo: lançamento sem os campos de reembolso é lido como particular, sem quebrar. Migrar é opção do Luiz, por script com prévia e desfazer — nunca efeito colateral de um deploy (Art. 1, Art. 10) |
 | RNF-09 | Erro sempre visível ao usuário, em português, sem JSON cru |
 | RNF-10 | Exportação gerada no navegador, sem custo de servidor |
+| RNF-12 | Documento de usuário sem o campo `dadosBancarios` é lido como "sem dados" e aciona o portão; lote sem a cópia usa o cadastro atual. Nenhuma migração automática (Art. 10) |
 
 ## Fatores críticos de sucesso
 
@@ -212,3 +236,4 @@ O sistema está pronto para a equipe quando, verificado com contas reais:
 - [ ] Integração contínua verde; auditoria de segurança sem item crítico ou alto em aberto
 - [ ] Guardião roda contra produção sem escrever nada e entrega achados nos três baldes
 - [ ] Uso pessoal do Luiz intacto: dados preservados, contas e orçamentos funcionando
+- [ ] Pessoa ativa sem dados para reembolso não passa da tela de cadastro; depois de salvar, o comprovante do lote fechado traz PIX e CPF corretos, e o administrador vê quem ainda não cadastrou

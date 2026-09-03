@@ -32,6 +32,8 @@ export const config = {
     "/contas/:path*",
     "/categorias/:path*",
     "/orcamentos/:path*",
+    "/perfil/:path*",
+    "/dados-para-reembolso/:path*",
     "/admin/:path*",
   ],
 };

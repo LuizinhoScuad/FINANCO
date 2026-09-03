@@ -95,10 +95,31 @@ export async function getFilaDeAprovacao(): Promise<PedidoDeReembolso[]> {
   return listarFilaDeAprovacao(await mapaDeNomes());
 }
 
+/**
+ * Fechamentos de pagamento, com os dados de depósito prontos para o comprovante.
+ *
+ * Lote fechado antes da Fase 11 não tem a cópia dos dados. Em vez de deixar o
+ * comprovante antigo sair sem eles, completamos com o cadastro atual da pessoa
+ * — uma leitura por pessoa, não por lote. O que tem cópia usa a cópia: ela é o
+ * registro do que foi enviado à época.
+ */
 export async function getLotes(userId?: string) {
   const usuario = await requireActiveUser();
   // Colaborador só enxerga os próprios fechamentos, dito ou não pela tela.
-  return listarLotes(usuario.role === "ADMIN" ? userId : usuario.uid);
+  const lotes = await listarLotes(usuario.role === "ADMIN" ? userId : usuario.uid);
+
+  const semCopia = [...new Set(lotes.filter((l) => !l.dadosBancarios).map((l) => l.userId))];
+  if (semCopia.length === 0) return lotes;
+
+  const perfis = new Map(
+    await Promise.all(
+      semCopia.map(async (uid) => [uid, (await buscarPerfil(uid))?.dadosBancarios ?? null] as const),
+    ),
+  );
+
+  return lotes.map((lote) =>
+    lote.dadosBancarios ? lote : { ...lote, dadosBancarios: perfis.get(lote.userId) ?? null },
+  );
 }
 
 export async function getEquipeAtiva(): Promise<Array<{ uid: string; name: string }>> {
@@ -212,15 +233,28 @@ function intervalo(desde: string, ate: string) {
   return { desde: inicioDoDia(desde), ate: fimDoDia(ate) };
 }
 
-/** Prévia obrigatória: mostra o impacto antes de qualquer escrita (Art. 1). */
+/**
+ * Prévia obrigatória: mostra o impacto antes de qualquer escrita (Art. 1).
+ *
+ * Diz também se a pessoa não cadastrou os dados de depósito. É aviso, não
+ * impedimento: o gestor decide se fecha assim mesmo e cobra o cadastro depois.
+ */
 export async function getPreviaDeLote(userId: string, desde: string, ate: string) {
   await requireAdmin();
   const parsed = Periodo.safeParse({ userId, desde, ate });
-  if (!parsed.success) return { quantidade: 0, totalCents: 0 };
+  if (!parsed.success) return { quantidade: 0, totalCents: 0, semDadosBancarios: false };
 
   const { desde: de, ate: a } = intervalo(desde, ate);
-  const previa = await previaDeFechamento(userId, de, a);
-  return { quantidade: previa.quantidade, totalCents: previa.totalCents };
+  const [previa, perfil] = await Promise.all([
+    previaDeFechamento(userId, de, a),
+    buscarPerfil(userId),
+  ]);
+
+  return {
+    quantidade: previa.quantidade,
+    totalCents: previa.totalCents,
+    semDadosBancarios: !perfil?.dadosBancarios,
+  };
 }
 
 export async function fecharLoteDePagamento(
@@ -236,14 +270,15 @@ export async function fecharLoteDePagamento(
   const { desde: de, ate: a } = intervalo(desde, ate);
   if (de > a) return fail("A data inicial é posterior à final.");
 
-  const nomes = await mapaDeNomes();
-  const nomeDoAlvo = nomes.get(userId);
-  if (!nomeDoAlvo) return fail("Pessoa não encontrada.");
+  // Nome e dados de depósito na mesma leitura: os dois são copiados para o
+  // lote, e é essa cópia que o comprovante mostra.
+  const alvo = await buscarPerfil(userId);
+  if (!alvo) return fail("Pessoa não encontrada.");
 
   try {
     const resultado = await fecharLote(
       { uid: admin.uid, nome: await nomeDoAtor(admin.uid, admin.email) },
-      { userId, userName: nomeDoAlvo },
+      { userId, userName: alvo.name, dadosBancarios: alvo.dadosBancarios },
       { desde: de, ate: a },
     );
     revalidatePath("/");

@@ -1,7 +1,8 @@
 import "server-only";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import type { UserProfile, UserRole, UserStatus } from "@/types";
+import { lerDadosBancarios } from "@/lib/core/dados-bancarios";
+import type { DadosBancarios, UserProfile, UserRole, UserStatus } from "@/types";
 
 /**
  * Repositório de usuários — primeiro do projeto, e molde para os demais.
@@ -39,6 +40,9 @@ function paraPerfil(uid: string, dados: Record<string, unknown>): Omit<UserProfi
     updatedAt: paraData(dados.updatedAt) ?? new Date(0),
     approvedBy: dados.approvedBy ? String(dados.approvedBy) : null,
     approvedAt: paraData(dados.approvedAt),
+    // Campo ausente vira null — o padrão seguro que aciona o portão de cadastro
+    // em vez de exigir migração de documento existente (Art. 10, RNF-12).
+    dadosBancarios: lerDadosBancarios(dados.dadosBancarios),
   };
 }
 
@@ -101,6 +105,7 @@ export async function listarUsuarios(): Promise<UserProfile[]> {
         updatedAt: new Date(0),
         approvedBy: null,
         approvedAt: null,
+        dadosBancarios: null,
       }),
       lastSignInAt: paraData(conta.metadata.lastSignInTime),
     };
@@ -165,6 +170,43 @@ export async function definirPapelEStatus(
   if (status !== "ACTIVE") {
     await adminAuth.revokeRefreshTokens(uid);
   }
+}
+
+/**
+ * Grava como a pessoa quer receber o reembolso.
+ *
+ * O mapa vai inteiro, com `null` explícito nos campos vazios: com `merge`, o
+ * Firestore funde mapa aninhado campo a campo, e omitir uma chave manteria o
+ * valor antigo — quem apagasse a conta bancária a veria reaparecer no
+ * comprovante seguinte.
+ *
+ * Terceiro e último escritor de `users/{uid}`, ao lado de `criarPerfilPendente`
+ * e `definirPapelEStatus`. Não toca papel nem status: quem muda acesso é o
+ * administrador, por outro caminho.
+ */
+export async function gravarDadosBancarios(
+  uid: string,
+  dados: Omit<DadosBancarios, "atualizadoEm">,
+): Promise<void> {
+  const agora = new Date();
+
+  await colecao().doc(uid).set(
+    {
+      dadosBancarios: {
+        titular: dados.titular,
+        cpf: dados.cpf,
+        pixTipo: dados.pixTipo,
+        pixChave: dados.pixChave,
+        banco: dados.banco,
+        agencia: dados.agencia,
+        conta: dados.conta,
+        tipoConta: dados.tipoConta,
+        atualizadoEm: agora,
+      },
+      updatedAt: agora,
+    },
+    { merge: true },
+  );
 }
 
 /** Quantos administradores ativos existem — usado para não zerar o acesso. */

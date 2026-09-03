@@ -17,12 +17,14 @@ import {
 } from "@/lib/core/repositories/accounts.repo";
 import { criarUnico, emTransacao, ErroDeNegocio } from "@/lib/guardrails/transactions";
 import { avaliarTransicao, podeEditar, podeExcluir } from "@/lib/core/aprovacao";
+import { lerDadosBancarios } from "@/lib/core/dados-bancarios";
 import { paraCentavos } from "@/lib/core/money";
 import { getMonthRange } from "@/lib/utils";
 import type {
   Account,
   AprovacaoStatus,
   Category,
+  DadosBancarios,
   PaymentBatch,
   PedidoDeReembolso,
   Transaction as Lancamento,
@@ -689,6 +691,8 @@ function paraLote(id: string, d: Record<string, unknown>): PaymentBatch {
     paidAt: paraDataOuNulo(d.paidAt),
     createdBy: texto(d.createdBy),
     createdAt: paraData(d.createdAt),
+    // Nulo em lote anterior à Fase 11; quem lê completa com o cadastro atual.
+    dadosBancarios: lerDadosBancarios(d.dadosBancarios),
   };
 }
 
@@ -728,7 +732,7 @@ export async function previaDeFechamento(uid: string, desde: Date, ate: Date) {
  */
 export async function fecharLote(
   ator: { uid: string; nome: string },
-  alvo: { userId: string; userName: string },
+  alvo: { userId: string; userName: string; dadosBancarios: DadosBancarios | null },
   periodo: { desde: Date; ate: Date },
 ): Promise<{ loteId: string; quantidade: number; totalCents: number }> {
   const previa = await previaDeFechamento(alvo.userId, periodo.desde, periodo.ate);
@@ -748,6 +752,9 @@ export async function fecharLote(
   escrita.set(loteRef, {
     userId: alvo.userId,
     userName: alvo.userName,
+    // Cópia, não referência: o comprovante registra para onde o dinheiro foi
+    // enviado à época. Editar o cadastro depois não reescreve pagamento feito.
+    dadosBancarios: alvo.dadosBancarios ?? null,
     periodStart: periodo.desde,
     periodEnd: periodo.ate,
     totalCents: previa.totalCents,

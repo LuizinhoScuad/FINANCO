@@ -91,6 +91,8 @@ async function semear() {
   const categoria = raiz.collection("categories").doc("cat-teste");
   const pedido = raiz.collection("transactions").doc("pedido-teste");
 
+  // Nasce SEM dadosBancarios: é assim que o portão da Fase 11 é exercitado
+  // logo abaixo. Os dados entram depois, por `cadastrarDadosBancarios()`.
   await raiz.set({ name: "Harness de Teste", email: null, role: "COLABORADOR", status: "ACTIVE", seeded: true, createdAt: new Date(), updatedAt: new Date() });
   await conta.set({ name: "Carteira Teste", type: "CASH", color: "#00d98b", balance: 0, createdAt: new Date(), updatedAt: new Date() });
   await categoria.set({ name: "Alimentacao Teste", icon: "🍔", type: "EXPENSE", color: "#f59e0b", createdAt: new Date() });
@@ -118,6 +120,27 @@ async function semear() {
   // isolamento não chega a testar nada.
   await auth.createUser({ uid: UID_FALSO, displayName: "Harness de Teste" }).catch(() => {});
   await auth.setCustomUserClaims(UID_FALSO, { role: "COLABORADOR", status: "ACTIVE" });
+}
+
+/** Preenche o cadastro de reembolso do usuário descartável, abrindo o portão. */
+async function cadastrarDadosBancarios() {
+  await db.collection("users").doc(UID_FALSO).set(
+    {
+      dadosBancarios: {
+        titular: "Harness de Teste",
+        cpf: "52998224725",
+        pixTipo: "EMAIL",
+        pixChave: "harness@exemplo.com.br",
+        banco: null,
+        agencia: null,
+        conta: null,
+        tipoConta: null,
+        atualizadoEm: new Date(),
+      },
+      updatedAt: new Date(),
+    },
+    { merge: true },
+  );
 }
 
 /**
@@ -182,6 +205,24 @@ try {
   console.log("\n— isolamento: colaborador não vê o alheio —");
   const cookieFalso = await sessaoDe(UID_FALSO).catch(() => null);
   if (cookieFalso) {
+    // Portão dos dados de reembolso: o harness ainda não cadastrou nada, então
+    // TODA tela do app tem de desviar para lá — inclusive por URL digitada.
+    const semDados = await abrir("/dashboard", cookieFalso);
+    checar(
+      "sem dados de reembolso, o app desvia para o cadastro",
+      (semDados.status === 307 || semDados.status === 302) &&
+        semDados.destino?.includes("/dados-para-reembolso"),
+      `status ${semDados.status} -> ${semDados.destino}`,
+    );
+
+    const portao = await abrir("/dados-para-reembolso", cookieFalso);
+    checar("a tela do cadastro abre (não entra em laço)", portao.status === 200, `status ${portao.status}`);
+
+    await cadastrarDadosBancarios();
+
+    const comDados = await abrir("/dashboard", cookieFalso);
+    checar("com os dados cadastrados, o app abre", comDados.status === 200, `status ${comDados.status}`);
+
     const relColab = await abrir("/relatorios", cookieFalso);
     checar("colaborador abre Relatórios", relColab.status === 200, `status ${relColab.status}`);
     if (relColab.status === 200) {

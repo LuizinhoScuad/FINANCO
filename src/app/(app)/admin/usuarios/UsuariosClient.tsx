@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { alterarPapel, aprovarUsuario, bloquearUsuario } from "@/actions/admin-users";
+import { descreverDadosBancarios } from "@/lib/core/dados-bancarios";
 import type { UserProfile, UserStatus } from "@/types";
 
 const ROTULO: Record<UserStatus, { texto: string; cor: string; fundo: string }> = {
@@ -30,6 +31,11 @@ export function UsuariosClient({
   const [emAcao, setEmAcao] = useState<string | null>(null);
 
   const aguardando = usuarios.filter((u) => u.status === "PENDING").length;
+  // Quem já pode usar o sistema mas ainda não disse como quer receber. Não é
+  // erro — é a fila do portão: no próximo acesso, essas pessoas preenchem.
+  const semDadosBancarios = usuarios.filter(
+    (u) => u.status === "ACTIVE" && !u.dadosBancarios,
+  ).length;
 
   function executar(uid: string, acao: () => Promise<{ ok: boolean; error?: string }>, sucesso: string) {
     setErro("");
@@ -57,6 +63,12 @@ export function UsuariosClient({
             <span style={{ color: "#ffc107", fontWeight: 600 }}>
               {" · "}
               {aguardando} aguardando liberação
+            </span>
+          )}
+          {semDadosBancarios > 0 && (
+            <span style={{ color: "#f59e0b" }}>
+              {" · "}
+              {semDadosBancarios} sem dados para reembolso
             </span>
           )}
         </p>
@@ -128,6 +140,50 @@ export function UsuariosClient({
                   {u.email ?? "sem e-mail"} · cadastro {formatarData(u.createdAt)} · último acesso{" "}
                   {formatarData(u.lastSignInAt)}
                 </div>
+
+                {/* Para onde vai o reembolso desta pessoa. Recolhido: é dado
+                    pessoal, e o painel é usado para gerenciar acesso (Art. 4). */}
+                {u.dadosBancarios ? (
+                  <details style={{ marginTop: "0.5rem" }}>
+                    <summary
+                      style={{ fontSize: "0.72rem", color: "var(--color-muted)", cursor: "pointer" }}
+                    >
+                      Dados para reembolso
+                    </summary>
+                    <div
+                      style={{
+                        marginTop: "0.5rem",
+                        padding: "0.5rem 0.625rem",
+                        backgroundColor: "var(--color-surface-2)",
+                        borderRadius: "2px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "2px",
+                      }}
+                    >
+                      {descreverDadosBancarios(u.dadosBancarios).map((linha) => (
+                        <div
+                          key={linha.rotulo}
+                          style={{ display: "flex", gap: "0.5rem", fontSize: "0.72rem" }}
+                        >
+                          <span style={{ color: "var(--color-muted)", minWidth: "110px" }}>
+                            {linha.rotulo}
+                          </span>
+                          <span style={{ fontWeight: 500 }}>{linha.valor}</span>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: "0.68rem", color: "var(--color-muted)", marginTop: "3px" }}>
+                        atualizado em {formatarData(u.dadosBancarios.atualizadoEm)}
+                      </div>
+                    </div>
+                  </details>
+                ) : (
+                  u.status === "ACTIVE" && (
+                    <div style={{ fontSize: "0.72rem", color: "#f59e0b", marginTop: "0.4rem" }}>
+                      sem dados para reembolso — será pedido no próximo acesso
+                    </div>
+                  )
+                )}
               </div>
 
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>

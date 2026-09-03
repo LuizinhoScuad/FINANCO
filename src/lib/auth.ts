@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { lerDadosBancarios } from "@/lib/core/dados-bancarios";
 
 export const SESSION_COOKIE_NAME = "financo_session";
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 5;
@@ -54,17 +55,34 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 }
 
 /**
- * Status gravado no documento do usuário — a fonte da verdade.
+ * O que o documento do usuário diz agora — a fonte da verdade.
  *
  * O claim vive no cookie e só muda quando a pessoa autentica de novo (até 5
  * dias). Ler o documento é o que faz um bloqueio valer na ação seguinte, sem
- * esperar a sessão expirar. Use em toda ação sensível.
+ * esperar a sessão expirar.
+ *
+ * Devolve status e presença dos dados de reembolso na MESMA leitura: o portão
+ * de cadastro não custa uma ida a mais ao banco (D17).
  */
-export async function getLiveStatus(uid: string): Promise<UserStatus | null> {
+export async function getLivePerfil(
+  uid: string,
+): Promise<{ status: UserStatus | null; temDadosBancarios: boolean }> {
   const doc = await adminDb.collection("users").doc(uid).get();
-  if (!doc.exists) return null;
-  const status = doc.data()?.status;
-  return status === "ACTIVE" || status === "BLOCKED" || status === "PENDING" ? status : null;
+  if (!doc.exists) return { status: null, temDadosBancarios: false };
+
+  const dados = doc.data();
+  const status = dados?.status;
+
+  return {
+    status:
+      status === "ACTIVE" || status === "BLOCKED" || status === "PENDING" ? status : null,
+    temDadosBancarios: lerDadosBancarios(dados?.dadosBancarios) !== null,
+  };
+}
+
+/** Só o status. Envelope de `getLivePerfil` para quem não precisa do resto. */
+export async function getLiveStatus(uid: string): Promise<UserStatus | null> {
+  return (await getLivePerfil(uid)).status;
 }
 
 export async function requireCurrentUser() {
@@ -74,19 +92,33 @@ export async function requireCurrentUser() {
 }
 
 /**
- * Usuário autenticado E liberado. Porta de entrada das telas do app.
+ * Usuário autenticado, liberado E com cadastro completo. Porta de entrada das
+ * telas do app.
  *
  * Antes esta função lançava erro cru quando a sessão expirava, o que estourava
  * na tela como falha genérica de Server Action. Agora redireciona.
+ *
+ * O portão dos dados de reembolso vive aqui de propósito (D17): passando por
+ * esta única porta, não há aba antiga, URL digitada ou server action que
+ * escape dele. Quem dispensa a exigência é só a própria tela de cadastro e a
+ * action que a salva — do contrário, o portão barraria o caminho para sair
+ * dele.
  */
-export async function requireActiveUser(): Promise<SessionUser> {
+export async function requireActiveUser(
+  opcoes: { exigirDadosBancarios?: boolean } = {},
+): Promise<SessionUser> {
+  const { exigirDadosBancarios = true } = opcoes;
+
   const user = await getSessionUser();
   if (!user) redirect("/login?expirada=1");
 
-  const status = (await getLiveStatus(user.uid)) ?? user.status;
+  const perfil = await getLivePerfil(user.uid);
+  const status = perfil.status ?? user.status;
 
   if (status === "PENDING") redirect("/aguardando");
   if (status !== "ACTIVE") redirect("/login?bloqueada=1");
+
+  if (exigirDadosBancarios && !perfil.temDadosBancarios) redirect("/dados-para-reembolso");
 
   return { ...user, status };
 }

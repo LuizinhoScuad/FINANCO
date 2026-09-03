@@ -1,14 +1,18 @@
 ---
 programa: financo
 tipo: plan
-versao: 4.0
+versao: 4.1
 criado: 2026-08-09
-revisado: 2026-08-09
+revisado: 2026-09-03
 herda: ../00-CONSTITUTION.md
 referencia: 01-SPEC.md
 ---
 
 # PLAN — Financo v4
+
+> **Revisão v4.1 (03/09/2026).** Dados para reembolso (PIX e conta), com portão
+> obrigatório no acesso. Decisões novas: D16 (o dado mora no perfil e é copiado
+> para o lote) e D17 (o portão vive em `requireActiveUser`).
 
 > **Revisão v4 (09/08/2026).** O reembolso voltou, agora **sobre** Transações
 > (ver [SPEC](01-SPEC.md)). As fases 6 e 7 seguem revogadas — o desenho é outro.
@@ -40,20 +44,23 @@ app/
     dashboard|transacoes|relatorios|contas|categorias|orcamentos/
       transacoes/                                         CAMINHO ÚNICO de lançamento
       relatorios/                                         TODOS — pedidos + PDF/XLSX
+      perfil/                                             "Meus dados" — edição do próprio cadastro
     admin/aprovacoes/                                     gestor — fila e lotes
     admin/usuarios/                                       gestor — acesso
+  dados-para-reembolso/                                   PORTÃO — fora de (app), como /aguardando
   error.tsx · not-found.tsx
   api/auth/session|export|import|health/
 
 actions/                     server actions FINAS — só orquestram
   transactions · accounts · categories · budgets
-  reembolsos · admin-users
+  reembolsos · admin-users · dados-bancarios
 
 lib/
   core/                      regra de negócio e acesso a dados, tipados
     repositories/*.repo.ts
     money.ts                 aritmética monetária (pura, testável)
     aprovacao.ts             máquina de estados do reembolso (pura, testável)
+    dados-bancarios.ts       CPF, chave PIX e leitura do mapa (pura, testável)
     exports/cliente.ts       PDF e XLSX gerados no navegador
   guardrails/                proteções — Art. 1, 2 e 6
     transactions.ts          runTransaction / writeBatch
@@ -93,6 +100,8 @@ e que lê coleções inteiras em memória) — deletado ao fim da Fase 4.
 | D13 | Consulta de grupo (`collectionGroup`) para a visão do gestor, em vez de mover tudo para coleção de topo | A alternativa exigiria migrar os lançamentos existentes de `users/{uid}/transactions` para a raiz — operação destrutiva sobre dado real, para ganhar um índice a menos. O custo é um índice de grupo; o benefício é nenhuma migração (Art. 10, RNF-11) |
 | D14 | Relatórios no menu principal, para todo mundo | Quem precisa do relatório no celular é quem está na rua, não só o gestor. O papel muda o alcance da consulta no servidor, não a existência da tela |
 | D15 | Situação em `aprovacao`, separada de `status` | `status` já significa pago/pendente no controle pessoal. Reaproveitar o campo faria dois conceitos disputarem o mesmo nome — a confusão que a v3 acabou de eliminar |
+| D16 | Dados para reembolso no mapa `users/{uid}.dadosBancarios`, com **cópia** em `paymentBatches/{id}.dadosBancarios` no fechamento | É dado do perfil, com um dono só — não merece coleção nova nem regra nova (o cliente já não lê nada do banco). A cópia no lote segue a mesma desnormalização de `userName`: o comprovante prova o que foi enviado **à época**, e uma edição posterior não reescreve história. Campo ausente é lido como "sem dados" — nenhuma migração (Art. 10) |
+| D17 | O portão é decidido em `requireActiveUser()`, lendo status e presença dos dados na **mesma** leitura de `users/{uid}` que já existia; a tela do portão fica fora de `(app)` e usa `exigirDadosBancarios: false` | Uma porta só cobre layout, páginas, actions e `escopo()` — não há aba aberta, URL digitada ou ação que escape (Art. 5). Custo: zero leitura extra. A tela fora do grupo autenticado é o que evita o laço de redirecionamento, como já faz `/aguardando` |
 
 ## Harness de orquestração
 
@@ -147,6 +156,7 @@ Guardião vem depois que existe o que vigiar.
 | [8](fases/FASE-8-GUARDIAO.md) | Verificação de integridade, observador, aprendizado | pendente |
 | [9](fases/FASE-9-QUALIDADE-GO-LIVE.md) | Testes, integração contínua, auditoria, piloto | pendente |
 | [10](fases/FASE-10-DATA-DE-CALENDARIO-E-FILTROS.md) | Dia de calendário, tela de Aprovados, filtros de relatório | ✅ concluída |
+| [11](fases/FASE-11-DADOS-PARA-REEMBOLSO.md) | Dados para reembolso: portão obrigatório, "Meus dados", cópia no lote, comprovante e painel | ⚙️ implementada — falta validar com dados reais |
 
 As fases 6 e 7 chegaram a ser implementadas e foram desfeitas na revisão v3. Os
 arquivos delas continuam em `fases/` como registro histórico — não são trabalho
@@ -165,3 +175,4 @@ a fazer.
 | Usuário bloqueado continuar ativo até a sessão expirar | Ação sensível revalida o status no documento, não confia só no cookie |
 | Sessão de trabalho estourar o contexto | Cada arquivo de fase declara a lista fechada do que ler; a Fase 4 já está prevista como duas sessões |
 | Guardião escrever no banco por acidente | Script sem nenhum método de escrita, verificável por busca textual; credencial fora do repositório |
+| Portão de dados bancários barrar as sondas | `fumaca.mjs` semeia o usuário descartável já com os dados; as sondas que entram com a conta real do administrador exigem que ele tenha preenchido o próprio cadastro — pré-condição declarada na Fase 11 |

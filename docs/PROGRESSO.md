@@ -14,6 +14,94 @@
 
 ## Sessões
 
+### 2026-09-03 — FASE 11: o sistema passa a saber para onde mandar o dinheiro
+
+**Horário de registro:** 03/09/2026 às 08:19
+
+**O que foi feito:**
+
+Pedido do Luiz: *"preciso criar um campo onde o usuário possa incluir todos seus
+dados para que eu consiga fazer os depósitos de ressarcimento [...] esses dados
+deverão constar também no relatório emitido como comprovante de reembolso, pois
+será através dele que a Regiane do financeiro fará o reembolso"*.
+
+O ciclo terminava sem endereço: o comprovante trazia nome, período, itens e
+total — mas nem chave PIX nem conta. `users/{uid}` guardava só nome, e-mail,
+papel e status, e não havia tela de perfil nenhuma. Na prática, cada pagamento
+exigia perguntar os dados por fora.
+
+1. **Portão obrigatório no acesso.** Quem está ativo e não cadastrou cai em
+   `/dados-para-reembolso` e só entra depois de salvar — sem botão de pular,
+   porque sem os dados ninguém recebe. Vale para o administrador também. O
+   portão vive em `requireActiveUser()`, que é a porta única por onde passam
+   layout, páginas e server actions: não há aba antiga nem URL digitada que
+   escape (Art. 5). **Sem leitura extra no banco** — `getLivePerfil` devolve
+   status e presença dos dados na mesma leitura que `getLiveStatus` já fazia.
+   A tela fica fora do grupo `(app)`, como `/aguardando`, senão o layout que
+   redireciona para ela redirecionaria de novo, em laço.
+2. **Campos:** titular (padrão: o nome do perfil), CPF com dígitos verificadores
+   conferidos, tipo e chave PIX obrigatórios (CPF, CNPJ, e-mail, telefone ou
+   aleatória — normalizados na entrada), e banco/agência/conta/tipo opcionais,
+   **todos ou nenhum**. Meia conta bancária não deposita nada.
+3. **Comprovante de reembolso** ganha o bloco "Dados para depósito". Ao fechar
+   o lote, uma **cópia** dos dados vai junto, na mesma escrita atômica (Art. 2):
+   o comprovante prova para onde o dinheiro foi enviado à época, e editar o
+   cadastro depois não reescreve pagamento feito. Lote fechado antes desta fase
+   não tem a cópia — a leitura completa com o cadastro atual, uma consulta por
+   pessoa.
+4. **Admin › Usuários** mostra os dados de cada pessoa (recolhidos) e marca quem
+   ainda não cadastrou. A prévia de fechamento avisa quando falta — sem impedir.
+5. **"Meus dados"** na lateral e no cabeçalho do Dashboard (o caminho no
+   celular; o menu inferior já estava no limite com seis itens).
+6. **Defeito encontrado pelos testes:** `+1 415 555 0100` tem os mesmos 11
+   dígitos de um celular brasileiro e era aceito como se fosse um. A correção
+   lê o `+` da entrada — única pista confiável de país.
+7. **Quebra de página no PDF:** o resumo cresceu com o bloco novo e as últimas
+   linhas — justamente a chave PIX — seriam escritas fora da página.
+
+**Sem migração de dados** (Art. 10, HARNESS §5): documento sem o campo é lido
+como "sem dados" e aciona o portão. Nenhum script novo.
+
+**Arquivos criados/modificados:**
+- `specs/financo/01-SPEC.md` — v4.1, RF-57 a RF-63, RNF-12, critério de aceite
+- `specs/financo/02-PLAN.md` — v4.1, decisões D16 e D17, fase 11, risco das sondas
+- `specs/financo/fases/FASE-11-DADOS-PARA-REEMBOLSO.md` *(novo)* — a fase
+- `src/lib/core/dados-bancarios.ts` *(novo)* — CPF, CNPJ, chave PIX, leitura e descrição (puro)
+- `tests/dados-bancarios.test.ts` *(novo)* — 19 testes
+- `src/lib/guardrails/validate.ts` — schema `DadosBancariosEntrada`
+- `src/lib/auth.ts` — `getLivePerfil` e o portão em `requireActiveUser`
+- `src/actions/dados-bancarios.ts` *(novo)* — `salvarDadosBancarios`
+- `src/lib/core/repositories/users.repo.ts` — leitura do mapa e `gravarDadosBancarios`
+- `src/lib/core/repositories/transactions.repo.ts` — cópia dos dados no `fecharLote`
+- `src/actions/reembolsos.ts` — cópia no fechamento, aviso na prévia, fallback em `getLotes`
+- `src/lib/core/exports/cliente.ts` — bloco "Dados para depósito" e quebra de página
+- `src/components/dados-bancarios/FormularioDadosBancarios.tsx` *(novo)*
+- `src/app/dados-para-reembolso/page.tsx` *(novo)* · `src/app/(app)/perfil/page.tsx` *(novo)*
+- `src/app/(app)/admin/usuarios/UsuariosClient.tsx` · `.../aprovados/AprovadosClient.tsx` · `.../admin/aprovacoes/AprovacoesClient.tsx`
+- `src/middleware.ts` · `src/components/layout/Sidebar.tsx` · `src/app/(app)/dashboard/page.tsx`
+- `tests/validate.test.ts` · `tests/integracao/ciclo-reembolso.test.ts` · `tests/integracao/sondas/fumaca.mjs` · `.../responsivo.mjs`
+
+**Portões:** estrutura íntegra · 84 testes verdes · typecheck limpo · lint sem
+erros · build com `/dados-para-reembolso` e `/perfil` nas rotas.
+
+**NÃO VERIFICADO (Art. 3):** nada rodou contra dados reais. O `.env` desta
+máquina existe, mas `NEXT_PUBLIC_FIREBASE_API_KEY`, `FIREBASE_CLIENT_EMAIL` e
+`FIREBASE_PRIVATE_KEY` estão vazios — `npm run test:integracao` para em "Could
+not load the default credentials", e as sondas autenticam contra o Firebase.
+
+**Pendências:**
+- Com credenciais: `npm run test:integracao`, `npm run test:fumaca` (traz as
+  checagens novas do portão) e `npm run test:responsivo` (agora inclui
+  `/perfil`). **Pré-condição:** preencher os próprios dados antes — as sondas
+  entram com a conta do administrador e batem no portão como todo mundo.
+- Os dados bancários **não entram no backup** (o snapshot cobre só as
+  subcoleções) — e, pelo mesmo motivo, a restauração não os apaga. Decisão de
+  escopo, não esquecimento.
+- Segue pendente de sessões anteriores: `npm run corrigir:data` para o
+  lançamento de R$ 37,00.
+
+---
+
 ### 2026-08-12 — O dia que se digita é o dia que se vê: data de calendário, tela de Aprovados e filtros de relatório
 
 **Horário de registro:** 12/08/2026 às 11:49

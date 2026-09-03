@@ -55,7 +55,7 @@ const APARELHOS = [
   { nome: "Android médio", viewport: { width: 393, height: 851 } },
 ];
 
-const ROTAS = ["/dashboard", "/transacoes", "/transacoes?periodo=tudo", "/relatorios", "/admin/aprovacoes", "/admin/usuarios", "/contas", "/categorias", "/orcamentos"];
+const ROTAS = ["/dashboard", "/transacoes", "/transacoes?periodo=tudo", "/relatorios", "/aprovados", "/perfil", "/admin/aprovacoes", "/admin/usuarios", "/contas", "/categorias", "/orcamentos"];
 
 const navegador = await chromium.launch();
 const problemas = [];

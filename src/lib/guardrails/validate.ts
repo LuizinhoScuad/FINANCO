@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  normalizarChavePix,
+  somenteDigitos,
+  validarCPF,
+  TIPOS_CHAVE_PIX,
+} from "@/lib/core/dados-bancarios";
 
 /**
  * Validação do arquivo de backup — Art. 1 e Art. 6.
@@ -86,6 +92,90 @@ export const ArquivoDeBackup = z.object({
 });
 
 export type ArquivoDeBackup = z.infer<typeof ArquivoDeBackup>;
+
+// --- dados para reembolso ----------------------------------------------------
+
+/**
+ * O formulário de "como quero receber", validado na fronteira (Art. 6).
+ *
+ * A entrada vem de `Object.fromEntries(formData)`: tudo é texto, inclusive os
+ * campos vazios. O schema devolve o objeto já normalizado e pronto para gravar
+ * — vazio vira `null`, chave PIX vira a forma canônica.
+ *
+ * Duas regras que não cabem num campo isolado ficam no `superRefine`:
+ *  • a chave só pode ser julgada junto com o tipo escolhido;
+ *  • banco, agência e conta são um bloco — meia conta bancária não deposita
+ *    nada, e gravar isso só produziria um comprovante inútil.
+ */
+export const DadosBancariosEntrada = z
+  .object({
+    titular: z.string().trim().min(3, "Informe o nome de quem recebe."),
+    cpf: z
+      .string()
+      .transform(somenteDigitos)
+      .refine(validarCPF, "CPF inválido — confira os números."),
+    pixTipo: z.enum(TIPOS_CHAVE_PIX.map((t) => t.valor) as [string, ...string[]], {
+      message: "Escolha o tipo da chave PIX.",
+    }),
+    pixChave: z.string().trim().min(1, "Informe a chave PIX."),
+    banco: z.string().trim().default(""),
+    agencia: z.string().trim().default(""),
+    conta: z.string().trim().default(""),
+    tipoConta: z.union([z.enum(["CORRENTE", "POUPANCA"]), z.literal("")]).default(""),
+  })
+  .superRefine((dados, ctx) => {
+    const chave = normalizarChavePix(
+      dados.pixTipo as "CPF" | "CNPJ" | "EMAIL" | "TELEFONE" | "ALEATORIA",
+      dados.pixChave,
+    );
+    if (!chave.ok) {
+      ctx.addIssue({ code: "custom", path: ["pixChave"], message: chave.erro });
+    }
+
+    const bancarios: Array<["banco" | "agencia" | "conta", string]> = [
+      ["banco", dados.banco],
+      ["agencia", dados.agencia],
+      ["conta", dados.conta],
+    ];
+    const preenchidos = bancarios.filter(([, v]) => v !== "");
+
+    if (preenchidos.length > 0 && preenchidos.length < bancarios.length) {
+      for (const [campo, valor] of bancarios) {
+        if (valor === "") {
+          ctx.addIssue({
+            code: "custom",
+            path: [campo],
+            message: "Para informar a conta bancária, preencha banco, agência e conta.",
+          });
+        }
+      }
+    }
+
+    if (dados.conta !== "" && dados.tipoConta === "") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["tipoConta"],
+        message: "Diga se a conta é corrente ou poupança.",
+      });
+    }
+  })
+  .transform((dados) => {
+    const chave = normalizarChavePix(
+      dados.pixTipo as "CPF" | "CNPJ" | "EMAIL" | "TELEFONE" | "ALEATORIA",
+      dados.pixChave,
+    );
+
+    return {
+      titular: dados.titular,
+      cpf: dados.cpf,
+      pixTipo: dados.pixTipo as "CPF" | "CNPJ" | "EMAIL" | "TELEFONE" | "ALEATORIA",
+      pixChave: chave.ok ? chave.chave : dados.pixChave,
+      banco: dados.banco || null,
+      agencia: dados.agencia || null,
+      conta: dados.conta || null,
+      tipoConta: dados.tipoConta === "" ? null : dados.tipoConta,
+    };
+  });
 
 export type ProblemaDeIntegridade = { tipo: string; detalhe: string };
 
