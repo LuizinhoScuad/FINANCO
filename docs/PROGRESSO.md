@@ -68,6 +68,16 @@ lançamento feito pelo gestor **nasce aguardando aprovação**; duplicidade é
 - `src/components/reembolso/ModalEstorno.tsx` *(novo)* — modal e selo de duplicidade
 - `src/app/(app)/transacoes/page.tsx` · `TransacoesClient.tsx` · `admin/aprovacoes/AprovacoesClient.tsx` · `aprovados/page.tsx` · `AprovadosClient.tsx` · `relatorios/RelatoriosClient.tsx`
 
+**Correção após o deploy (15:55):** o Luiz relatou pelo iPhone que "os
+botões de baixo ficaram escondidos". Conferido: o CSS em produção é idêntico
+ao de setembro e o deploy de hoje não tocou em layout. A causa está na barra
+inferior (`BottomNav.tsx`, sem alteração desde 12/08): `height: 64px` fixo com
+`paddingBottom: env(safe-area-inset-bottom)` — com `border-box`, a folga da
+faixa de gestos era descontada de dentro dos 64px e os rótulos ficavam sob a
+barra do iniciar quando o app abre pelo ícone da tela inicial. Agora a altura
+é `calc(64px + env(safe-area-inset-bottom))`. Não verificável no Chrome
+emulado (a folga vale zero ali) — depende do teste no iPhone.
+
 **Pendências / próximos passos:**
 - **Não verificado na tela** (Art. 3): o `.env` desta máquina tem as chaves
   do Firebase vazias e o login local falha com `auth/invalid-api-key`. Em

@@ -122,7 +122,11 @@ export function BottomNav({
         bottom: 0,
         left: 0,
         right: 0,
-        height: "64px",
+        // A folga da faixa de gestos do iPhone é SOMADA à altura. Com
+        // 'box-sizing: border-box', um 'height: 64px' fixo descontava o
+        // padding de dentro — e os rótulos ficavam por baixo da barra do
+        // iniciar quando o app abre pelo ícone da tela inicial.
+        height: "calc(64px + env(safe-area-inset-bottom))",
         backgroundColor: "var(--color-surface)",
         borderTop: "1px solid var(--color-border)",
         display: "flex",
