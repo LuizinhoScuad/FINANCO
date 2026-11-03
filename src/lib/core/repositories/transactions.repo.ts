@@ -1,4 +1,5 @@
 import "server-only";
+import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase-admin";
 import {
   escopoDe,
@@ -16,8 +17,10 @@ import {
   lerContaEmTransacao,
 } from "@/lib/core/repositories/accounts.repo";
 import { criarUnico, emTransacao, ErroDeNegocio } from "@/lib/guardrails/transactions";
-import { avaliarTransicao, podeEditar, podeExcluir } from "@/lib/core/aprovacao";
+import { avaliarTransicao, estornoAposPagamento, podeEditar, podeEstornar, podeExcluir } from "@/lib/core/aprovacao";
 import { lerDadosBancarios } from "@/lib/core/dados-bancarios";
+import { semelhantes } from "@/lib/core/duplicidade";
+import { fimDoDia, inicioDoDia, paraCampoDeData } from "@/lib/core/datas";
 import { paraCentavos } from "@/lib/core/money";
 import { getMonthRange } from "@/lib/utils";
 import type {
@@ -25,6 +28,8 @@ import type {
   AprovacaoStatus,
   Category,
   DadosBancarios,
+  Estorno,
+  EstornoNoLote,
   PaymentBatch,
   PedidoDeReembolso,
   Transaction as Lancamento,
@@ -47,6 +52,8 @@ export type DadosLancamento = {
   receiptUrl?: string | null;
   /** Pedido de reembolso à empresa. Falso é lançamento particular. */
   reembolso?: boolean;
+  /** Quem registrou, quando não é o dono (o administrador em nome dela). */
+  lancadoPor?: { uid: string; nome: string } | null;
 };
 
 /**
@@ -88,6 +95,8 @@ function paraLancamento(id: string, d: Record<string, unknown>): Lancamento {
     approvedAt: paraDataOuNulo(d.approvedAt),
     paymentBatchId: textoOuNulo(d.paymentBatchId),
     reimbursedAt: paraDataOuNulo(d.reimbursedAt),
+    lancadoPor: textoOuNulo(d.lancadoPor),
+    lancadoPorNome: textoOuNulo(d.lancadoPorNome),
   };
 }
 
@@ -200,6 +209,25 @@ export async function buscarLancamento(id: string): Promise<Lancamento | null> {
   return doc.exists ? paraLancamento(doc.id, doc.data() ?? {}) : null;
 }
 
+/**
+ * Lançamentos gêmeos de um candidato, na mesma pessoa (RF-70, D20).
+ *
+ * Consulta só o dia do lançamento — um punhado de documentos — e deixa a
+ * regra do que é gêmeo para `duplicidade.ts`. Sem índice novo.
+ */
+export async function listarSemelhantes(
+  esc: Escopo,
+  candidato: { amount: number; date: Date },
+): Promise<Lancamento[]> {
+  const dia = paraCampoDeData(candidato.date);
+  const snap = await esc.transactions
+    .where("date", ">=", inicioDoDia(dia))
+    .where("date", "<=", fimDoDia(dia))
+    .get();
+  const doDia = snap.docs.map((d) => paraLancamento(d.id, d.data()));
+  return semelhantes(candidato, doDia);
+}
+
 // --- escrita atômica ---------------------------------------------------------
 
 function paraGravacao(d: DadosLancamento, extras: Record<string, unknown> = {}) {
@@ -217,6 +245,8 @@ function paraGravacao(d: DadosLancamento, extras: Record<string, unknown> = {}) 
     notes: d.notes ?? null,
     receiptUrl: d.receiptUrl ?? null,
     reembolso: d.reembolso === true,
+    lancadoPor: d.lancadoPor?.uid ?? null,
+    lancadoPorNome: d.lancadoPor?.nome ?? null,
     createdAt: agora,
     updatedAt: agora,
     ...extras,
@@ -255,9 +285,16 @@ function aprovacaoInicial(reembolso: boolean) {
  * `idEnvio` vem do formulário e é o mesmo em um reenvio acidental (duplo
  * clique): o identificador do documento é derivado dele, então a segunda
  * tentativa é recusada em vez de duplicar lançamento e saldo.
+ *
+ * O escopo é o da sessão por padrão; o administrador lançando em nome de
+ * alguém passa o da pessoa (D18) — e só ele chega aqui com outro escopo.
  */
-export async function criarLancamento(dados: DadosLancamento, idEnvio: string): Promise<void> {
-  const esc = await escopoPronto();
+export async function criarLancamento(
+  dados: DadosLancamento,
+  idEnvio: string,
+  escopo?: Escopo,
+): Promise<void> {
+  const esc = escopo ?? (await escopoPronto());
 
   await emTransacao(async (t) => {
     await lerContaEmTransacao(t, esc, dados.accountId);
@@ -284,12 +321,13 @@ export async function criarParcelamento(
   dados: DadosLancamento,
   parcelas: number,
   idEnvio: string,
+  escopo?: Escopo,
 ): Promise<void> {
   if (parcelas < 2 || parcelas > 72) {
     throw new ErroDeNegocio("A quantidade de parcelas deve ficar entre 2 e 72.");
   }
 
-  const esc = await escopoPronto();
+  const esc = escopo ?? (await escopoPronto());
 
   await emTransacao(async (t) => {
     await lerContaEmTransacao(t, esc, dados.accountId);
@@ -363,6 +401,9 @@ export async function atualizarLancamento(id: string, dados: DadosLancamento): P
       ...paraGravacao(dados),
       ...aprovacaoDepoisDaEdicao(anterior.aprovacao, dados.reembolso === true),
       createdAt: anterior.createdAt, // preserva a criação original
+      // Quem lançou não muda com a edição: a marca do gestor sobrevive (RF-65).
+      lancadoPor: anterior.lancadoPor,
+      lancadoPorNome: anterior.lancadoPorNome,
       updatedAt: new Date(),
     });
 
@@ -398,6 +439,130 @@ export async function excluirLancamento(id: string): Promise<void> {
 
     t.delete(ref);
   });
+}
+
+// --- estorno pelo gestor -----------------------------------------------------
+
+const estornos = () => adminDb.collection("estornos");
+
+function paraEstornoNoLote(v: unknown): EstornoNoLote[] {
+  if (!Array.isArray(v)) return [];
+  return v.map((e) => {
+    const d = (e ?? {}) as Record<string, unknown>;
+    return {
+      transactionId: texto(d.transactionId),
+      description: texto(d.description),
+      amountCents: numero(d.amountCents),
+      motivo: texto(d.motivo),
+      estornadoEm: paraData(d.estornadoEm),
+      estornadoPorNome: texto(d.estornadoPorNome),
+    };
+  });
+}
+
+function paraEstorno(id: string, d: Record<string, unknown>): Estorno {
+  return {
+    id,
+    userId: texto(d.userId),
+    userName: texto(d.userName),
+    description: texto(d.description),
+    amount: numero(d.amount),
+    date: paraData(d.date),
+    aprovacaoNaEpoca: paraAprovacao(d.aprovacaoNaEpoca),
+    paymentBatchId: textoOuNulo(d.paymentBatchId),
+    motivo: texto(d.motivo),
+    estornadoPor: texto(d.estornadoPor),
+    estornadoPorNome: texto(d.estornadoPorNome),
+    estornadoEm: paraData(d.estornadoEm),
+    original: (d.original ?? {}) as Record<string, unknown>,
+  };
+}
+
+/**
+ * Estorna um lançamento de outra pessoa: remove com cópia, numa operação só (D19).
+ *
+ * Dentro da mesma transação: a cópia vai para `estornos/{id}`, o saldo da conta
+ * é desfeito, e — se o pedido já tinha sido pago — o lote fechado passa a
+ * registrar o estornado ao lado do total (nunca no lugar dele, RF-69). Por
+ * último o original é apagado. Falhou qualquer parte, nada acontece (Art. 2).
+ *
+ * Um segundo clique não encontra mais o documento e falha antes de escrever.
+ */
+export async function estornarLancamento(
+  dono: { uid: string; nome: string },
+  id: string,
+  ator: { uid: string; nome: string },
+  motivo: string,
+): Promise<{ aposPagamento: boolean; amount: number; description: string }> {
+  const esc = escopoDe(dono.uid);
+
+  return emTransacao(async (t) => {
+    const ref = esc.transactions.doc(id);
+    const snap = await t.get(ref);
+    if (!snap.exists) throw new ErroDeNegocio("Lançamento não encontrado — talvez já tenha sido estornado.");
+
+    const original = snap.data() ?? {};
+    const l = paraLancamento(snap.id, original);
+
+    if (!podeEstornar(l.aprovacao)) throw new ErroDeNegocio("Este lançamento não pode ser estornado.");
+
+    const aposPagamento = estornoAposPagamento(l.aprovacao);
+    const loteRef = aposPagamento && l.paymentBatchId ? lotes().doc(l.paymentBatchId) : null;
+
+    // Todas as leituras antes de qualquer escrita.
+    const [contaExiste, loteSnap] = await Promise.all([
+      t.get(esc.accounts.doc(l.accountId)).then((c) => c.exists),
+      loteRef ? t.get(loteRef) : Promise.resolve(null),
+    ]);
+
+    const agora = new Date();
+
+    t.set(estornos().doc(`${dono.uid}-${id}`), {
+      userId: dono.uid,
+      userName: dono.nome,
+      transactionId: id,
+      description: l.description,
+      amount: l.amount,
+      date: l.date,
+      aprovacaoNaEpoca: l.aprovacao,
+      paymentBatchId: aposPagamento ? l.paymentBatchId : null,
+      motivo,
+      estornadoPor: ator.uid,
+      estornadoPorNome: ator.nome,
+      estornadoEm: agora,
+      original,
+    });
+
+    if (l.status === "COMPLETED" && contaExiste) {
+      ajustarSaldoEmTransacao(t, esc, l.accountId, -deltaDeSaldo(l.type, l.amount));
+    }
+
+    if (loteRef && loteSnap?.exists) {
+      const item: EstornoNoLote = {
+        transactionId: id,
+        description: l.description,
+        amountCents: paraCentavos(l.amount),
+        motivo,
+        estornadoEm: agora,
+        estornadoPorNome: ator.nome,
+      };
+      t.update(loteRef, {
+        expenseCount: FieldValue.increment(-1),
+        estornadoCents: FieldValue.increment(item.amountCents),
+        estornos: FieldValue.arrayUnion(item),
+      });
+    }
+
+    t.delete(ref);
+
+    return { aposPagamento, amount: l.amount, description: l.description };
+  });
+}
+
+/** Os estornos mais recentes — a trilha do que o gestor removeu (RF-68). */
+export async function listarEstornos(limite = 50): Promise<Estorno[]> {
+  const snap = await estornos().orderBy("estornadoEm", "desc").limit(limite).get();
+  return snap.docs.map((d) => paraEstorno(d.id, d.data()));
 }
 
 /** Alterna entre pago e pendente, refletindo no saldo — sem brecha de duplo clique. */
@@ -693,6 +858,8 @@ function paraLote(id: string, d: Record<string, unknown>): PaymentBatch {
     createdAt: paraData(d.createdAt),
     // Nulo em lote anterior à Fase 11; quem lê completa com o cadastro atual.
     dadosBancarios: lerDadosBancarios(d.dadosBancarios),
+    estornadoCents: numero(d.estornadoCents),
+    estornos: paraEstornoNoLote(d.estornos),
   };
 }
 
@@ -763,6 +930,8 @@ export async function fecharLote(
     paidAt: agora,
     createdBy: ator.uid,
     createdAt: agora,
+    estornadoCents: 0,
+    estornos: [],
   });
 
   for (const pedido of previa.pedidos) {

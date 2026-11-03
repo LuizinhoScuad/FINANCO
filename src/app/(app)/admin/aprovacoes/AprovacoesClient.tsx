@@ -9,8 +9,11 @@ import {
   getPreviaDeLote,
   rejeitarPedido,
 } from "@/actions/reembolsos";
+import { estornarLancamento } from "@/actions/estornos";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { somar } from "@/lib/core/money";
+import { marcarDuplicidades } from "@/lib/core/duplicidade";
+import { ModalEstorno, SeloDuplicidade } from "@/components/reembolso/ModalEstorno";
 import type { PedidoDeReembolso } from "@/types";
 
 type Props = {
@@ -25,6 +28,20 @@ export function AprovacoesClient({ fila, equipe }: Props) {
   const [aviso, setAviso] = useState("");
   const [rejeitando, setRejeitando] = useState<PedidoDeReembolso | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [estornando, setEstornando] = useState<PedidoDeReembolso | null>(null);
+
+  // Gêmeos dentro da fila (RF-71): a duplicidade aparece antes de aprovar.
+  const gemeos = useMemo(() => marcarDuplicidades(fila), [fila]);
+
+  function confirmarEstorno(motivoEstorno: string) {
+    if (!estornando) return;
+    const alvo = estornando;
+    executar(
+      () => estornarLancamento(alvo.userId, alvo.id, motivoEstorno),
+      `Lançamento de ${alvo.userName} (${formatCurrency(alvo.amount)}) estornado. A cópia está em Aprovados › Estornos.`,
+    );
+    setEstornando(null);
+  }
 
   // Fechamento de lote
   const [pessoa, setPessoa] = useState("");
@@ -218,9 +235,13 @@ export function AprovacoesClient({ fila, equipe }: Props) {
                 style={{ padding: "1rem", borderBottom: "1px solid var(--color-border)", display: "flex", gap: "1rem", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap" }}
               >
                 <div style={{ minWidth: "200px", flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>{p.description}</div>
+                  <div style={{ fontWeight: 600, display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    {p.description}
+                    {gemeos.has(p.id) && <SeloDuplicidade />}
+                  </div>
                   <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: "3px" }}>
                     {p.userName} · {p.categoryName} · {formatDate(p.date)}
+                    {p.lancadoPorNome && <span style={{ color: "#60a5fa" }}> · lançado por {p.lancadoPorNome}</span>}
                   </div>
                   <div style={{ marginTop: "0.4rem" }}>
                     {p.receiptUrl ? (
@@ -254,6 +275,15 @@ export function AprovacoesClient({ fila, equipe }: Props) {
                     style={{ fontSize: "0.8rem" }}
                   >
                     Rejeitar
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    disabled={isPending}
+                    onClick={() => { setEstornando(p); setErro(""); }}
+                    title="Remove o lançamento da pessoa, com cópia e motivo"
+                    style={{ fontSize: "0.8rem", color: "var(--color-muted)" }}
+                  >
+                    Estornar
                   </button>
                 </div>
               </div>
@@ -350,6 +380,15 @@ export function AprovacoesClient({ fila, equipe }: Props) {
             </div>
           </div>
         </div>
+      )}
+
+      {estornando && (
+        <ModalEstorno
+          pedido={estornando}
+          ocupado={isPending}
+          onConfirmar={confirmarEstorno}
+          onCancelar={() => setEstornando(null)}
+        />
       )}
 
       <style jsx>{`

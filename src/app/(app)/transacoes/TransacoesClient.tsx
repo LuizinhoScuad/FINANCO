@@ -2,7 +2,16 @@
 
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createTransaction, deleteTransaction, toggleTransactionStatus, getTransactions, attachReceipt } from "@/actions/transactions";
+import {
+    createTransaction,
+    deleteTransaction,
+    toggleTransactionStatus,
+    getTransactions,
+    attachReceipt,
+    verificarDuplicidade,
+    getContasECategoriasDe,
+    type LancamentoSemelhante,
+} from "@/actions/transactions";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { hojeNoCampo } from "@/lib/core/datas";
 import type { Account, Category, Transaction } from "@/types";
@@ -33,13 +42,54 @@ type Props = {
     tudo?: boolean;
     /** Verdadeiro quando a listagem bateu no teto e há mais coisa no banco. */
     truncado?: boolean;
+    uidAtual: string;
+    /** Só o administrador recebe a equipe — é o que liga o seletor "Lançar para". */
+    equipe?: Array<{ uid: string; name: string }>;
 };
 
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-export function TransacoesClient({ transactions, categories, accounts, month, year, tudo = false, truncado = false }: Props) {
+export function TransacoesClient({
+    transactions,
+    categories: minhasCategorias,
+    accounts: minhasContas,
+    month,
+    year,
+    tudo = false,
+    truncado = false,
+    uidAtual,
+    equipe = [],
+}: Props) {
     const router = useRouter();
     const [showForm, setShowForm] = useState(false);
+
+    // Em nome de quem o lançamento vai (RF-64). Ao trocar a pessoa, conta e
+    // categoria passam a ser as DELA — o lançamento vive na subcoleção dela.
+    const [paraUid, setParaUid] = useState("");
+    const [escopoAlheio, setEscopoAlheio] = useState<{ accounts: Account[]; categories: Category[] } | null>(null);
+    const [carregandoEscopo, setCarregandoEscopo] = useState(false);
+    const accounts = paraUid && escopoAlheio ? escopoAlheio.accounts : minhasContas;
+    const categories = paraUid && escopoAlheio ? escopoAlheio.categories : minhasCategorias;
+    const nomeAlvo = equipe.find((e) => e.uid === paraUid)?.name ?? "";
+
+    // Aviso de duplicidade (RF-70): o servidor diz se há gêmeo; a pessoa decide.
+    const [semelhantes, setSemelhantes] = useState<LancamentoSemelhante[] | null>(null);
+    const formRef = useRef<HTMLFormElement>(null);
+
+    async function escolherPessoa(uid: string) {
+        setParaUid(uid);
+        setEscopoAlheio(null);
+        setSemelhantes(null);
+        setErro("");
+        if (!uid) return;
+        setCarregandoEscopo(true);
+        const res = await getContasECategoriasDe(uid);
+        setCarregandoEscopo(false);
+        if (!res.ok) {
+            setErro(res.error);
+            setParaUid("");
+            return;
+        }
+        setEscopoAlheio(res.data);
+    }
     const [isPending, startTransition] = useTransition();
     const [filterType, setFilterType] = useState("all");
     const [txType, setTxType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
@@ -166,13 +216,26 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
 
     const filtered = filterType === "all" ? transactions : transactions.filter((t) => t.type === filterType);
 
-    async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        const fd = new FormData(e.currentTarget);
+    function fecharFormulario() {
+        setShowForm(false);
+        setRepeat(false);
+        setReembolso(true);
+        setOcrDesc("");
+        setOcrAmount("");
+        setOcrDate(hojeNoCampo());
+        setReceiptUrl("");
+        setReceiptPreview("");
+        setOcrStatus("");
+        setSemelhantes(null);
+        setParaUid("");
+        setEscopoAlheio(null);
+        setIdEnvio(crypto.randomUUID());
+    }
+
+    function salvar(fd: FormData) {
         // Marca deste envio: num reenvio acidental (duplo clique) o valor é o
         // mesmo, e o servidor recusa em vez de duplicar lançamento e saldo.
         fd.set("submissionId", idEnvio);
-
         setErro("");
         startTransition(async () => {
             const res = await createTransaction(fd);
@@ -180,18 +243,38 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                 setErro(res.error);
                 return;
             }
-            setShowForm(false);
-            setRepeat(false);
-            setReembolso(true);
-            setOcrDesc("");
-            setOcrAmount("");
-            setOcrDate(hojeNoCampo());
-            setReceiptUrl("");
-            setReceiptPreview("");
-            setOcrStatus("");
-            setIdEnvio(crypto.randomUUID());
+            fecharFormulario();
             router.refresh();
         });
+    }
+
+    async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        setErro("");
+        setSemelhantes(null);
+
+        // Primeiro pergunta ao servidor se já existe gêmeo (RF-70). É aviso:
+        // a pessoa confirma e o mesmo formulário segue para o salvar.
+        startTransition(async () => {
+            const res = await verificarDuplicidade(fd);
+            if (!res.ok) {
+                setErro(res.error);
+                return;
+            }
+            if (res.data.length > 0) {
+                setSemelhantes(res.data);
+                return;
+            }
+            salvar(fd);
+        });
+    }
+
+    function salvarMesmoAssim() {
+        if (!formRef.current) return;
+        const fd = new FormData(formRef.current);
+        setSemelhantes(null);
+        salvar(fd);
     }
 
     async function handleDelete(id: string) {
@@ -394,6 +477,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                     <span>{tx.account.name}</span>
                                     {tx.isInstallment && <span>parcela {tx.installment}/{tx.totalInstallments}</span>}
                                     {tx.payee && <span style={{ color: "var(--color-accent)" }}>{tx.payee}</span>}
+                                    {tx.lancadoPorNome && <span style={{ color: "#60a5fa" }}>lançado por {tx.lancadoPorNome}</span>}
                                 </div>
 
                                 {tx.aprovacao === "REJEITADA" && tx.rejectionReason && (
@@ -549,6 +633,7 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                         )}
                                         <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                                             {tx.payee && <span style={{ color: "var(--color-accent)" }}>{tx.payee}</span>}
+                                            {tx.lancadoPorNome && <span style={{ color: "#60a5fa" }}>lançado por {tx.lancadoPorNome}</span>}
                                             {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
                                             {tx.receiptUrl ? (
                                                 <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
@@ -628,11 +713,13 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
             {showForm && (
                 <div
                     className="overlay-modal"
-                    onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
+                    onClick={(e) => e.target === e.currentTarget && fecharFormulario()}
                 >
                     <div className="card animate-scale-up modal-card">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>Nova Transação</h2>
+                            <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                                {paraUid && nomeAlvo ? `Lançamento para ${nomeAlvo}` : "Nova Transação"}
+                            </h2>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                 <label style={{ fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                     <input
@@ -648,7 +735,43 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                             </div>
                         </div>
 
-                        <form id="tx-form" onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <form id="tx-form" ref={formRef} onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                            {/* Só o administrador vê isto (RF-64). Por padrão, "eu mesmo":
+                                o uso de todo dia não muda em nada. */}
+                            {equipe.length > 0 && (
+                                <div
+                                    style={{
+                                        padding: "0.75rem 0.875rem",
+                                        borderRadius: "4px",
+                                        border: `1px solid ${paraUid ? "rgba(96, 165, 250, 0.45)" : "var(--color-border)"}`,
+                                        backgroundColor: paraUid ? "rgba(96, 165, 250, 0.07)" : "var(--color-surface-2)",
+                                    }}
+                                >
+                                    <label className="label-sm" style={{ color: paraUid ? "#60a5fa" : undefined }}>
+                                        Lançar para
+                                    </label>
+                                    <select
+                                        name="paraUid"
+                                        className="input-base"
+                                        value={paraUid}
+                                        onChange={(e) => escolherPessoa(e.target.value)}
+                                        disabled={carregandoEscopo}
+                                    >
+                                        <option value="">Eu mesmo</option>
+                                        {equipe.filter((e) => e.uid !== uidAtual).map((e) => (
+                                            <option key={e.uid} value={e.uid}>{e.name}</option>
+                                        ))}
+                                    </select>
+                                    {paraUid && (
+                                        <p style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "0.45rem", lineHeight: 1.5 }}>
+                                            {carregandoEscopo
+                                                ? "Carregando as contas e categorias dessa pessoa..."
+                                                : `O lançamento entra em Transações de ${nomeAlvo}, com a conta e a categoria dela, marcado como lançado por você. Vai para a fila como qualquer pedido.`}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="grid-campos" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "0.75rem" }}>
                                 <div>
                                     <label className="label-sm">Tipo</label>
@@ -847,9 +970,53 @@ export function TransacoesClient({ transactions, categories, accounts, month, ye
                                 tela, e o botão de confirmar ficava no fim de
                                 uma rolagem que nem sempre existia. Agora ele
                                 está sempre à vista. */}
+                            {/* Aviso de duplicidade (RF-70): mostra os parecidos e pergunta.
+                                Nunca bloqueia — despesa legítima repetida existe. */}
+                            {semelhantes && semelhantes.length > 0 && (
+                                <div
+                                    style={{
+                                        padding: "0.875rem",
+                                        borderRadius: "4px",
+                                        border: "1px solid rgba(245, 158, 11, 0.5)",
+                                        backgroundColor: "rgba(245, 158, 11, 0.08)",
+                                    }}
+                                >
+                                    <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#f59e0b", marginBottom: "0.4rem" }}>
+                                        ⚠ Já existe lançamento parecido {paraUid && nomeAlvo ? `de ${nomeAlvo}` : "seu"}
+                                    </div>
+                                    <p style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginBottom: "0.6rem", lineHeight: 1.5 }}>
+                                        Mesmo valor, na mesma data. Confira se não é o mesmo gasto antes de salvar de novo.
+                                    </p>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.75rem" }}>
+                                        {semelhantes.map((s) => (
+                                            <div key={s.id} style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", fontSize: "0.8rem" }}>
+                                                <span>
+                                                    {s.description}
+                                                    <span style={{ color: "var(--color-muted)" }}> · {formatDate(s.date)}</span>
+                                                    {s.reembolso && (
+                                                        <span style={{ marginLeft: "0.4rem", fontSize: "0.65rem", fontWeight: 700, color: corDoStatus(s.aprovacao).cor }}>
+                                                            {rotuloCurto(s.aprovacao)}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <strong style={{ whiteSpace: "nowrap" }}>{formatCurrency(s.amount)}</strong>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                        <button type="button" className="btn btn-ghost" onClick={() => setSemelhantes(null)} disabled={isPending} style={{ fontSize: "0.8rem" }}>
+                                            Voltar e conferir
+                                        </button>
+                                        <button type="button" className="btn btn-primary" onClick={salvarMesmoAssim} disabled={isPending} style={{ fontSize: "0.8rem", borderColor: "#f59e0b" }}>
+                                            {isPending ? "Salvando..." : "É outro gasto — salvar mesmo assim"}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="modal-acoes">
-                                <button type="button" className="btn btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary" disabled={isPending || ocrLoading}>
+                                <button type="button" className="btn btn-ghost" onClick={fecharFormulario}>Cancelar</button>
+                                <button type="submit" className="btn btn-primary" disabled={isPending || ocrLoading || carregandoEscopo || (semelhantes?.length ?? 0) > 0}>
                                     {isPending ? "Salvando..." : ocrLoading ? "⏳ Aguarde o recibo..." : "Finalizar Lançamento"}
                                 </button>
                             </div>

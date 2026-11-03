@@ -62,6 +62,30 @@ export function podeExcluir(status: AprovacaoStatus | null): boolean {
   return podeEditar(status);
 }
 
+/**
+ * O estorno é o gesto do administrador sobre o lançamento alheio (RF-67).
+ *
+ * Vale em qualquer situação, inclusive a já paga — decisão do Luiz, 03/11/2026:
+ * a duplicidade costuma ser notada na hora de pagar, às vezes depois. O que
+ * muda conforme a situação é o que mais precisa ser escrito, não se pode.
+ */
+export const ESTORNAVEIS: readonly (AprovacaoStatus | null)[] = [
+  null,
+  "ENVIADA",
+  "REJEITADA",
+  "APROVADA",
+  "RESSARCIDA",
+] as const;
+
+export function podeEstornar(status: AprovacaoStatus | null): boolean {
+  return ESTORNAVEIS.includes(status);
+}
+
+/** Estorno de pedido já pago exige mexer no lote fechado (RF-69). */
+export function estornoAposPagamento(status: AprovacaoStatus | null): boolean {
+  return status === "RESSARCIDA";
+}
+
 export type ResultadoTransicao =
   | { permitida: true; transicao: Transicao }
   | { permitida: false; motivo: string };

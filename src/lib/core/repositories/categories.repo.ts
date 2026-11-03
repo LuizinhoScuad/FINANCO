@@ -1,5 +1,5 @@
 import "server-only";
-import { escopoPronto, paraData, texto } from "@/lib/core/firestore";
+import { escopoPronto, paraData, texto, type Escopo } from "@/lib/core/firestore";
 import { ErroDeNegocio } from "@/lib/guardrails/transactions";
 import type { Category } from "@/types";
 
@@ -14,8 +14,8 @@ function paraCategoria(id: string, d: Record<string, unknown>): Category {
   };
 }
 
-export async function listarCategorias(tipo?: "INCOME" | "EXPENSE"): Promise<Category[]> {
-  const esc = await escopoPronto();
+export async function listarCategorias(tipo?: "INCOME" | "EXPENSE", escopo?: Escopo): Promise<Category[]> {
+  const esc = escopo ?? (await escopoPronto());
   const consulta = tipo ? esc.categories.where("type", "==", tipo) : esc.categories;
   const snap = await consulta.get();
 

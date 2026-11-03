@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   avaliarTransicao,
+  estornoAposPagamento,
   IMUTAVEIS,
   jaAtendido,
   podeEditar,
+  podeEstornar,
   podeExcluir,
   rotulo,
   rotuloCurto,
@@ -94,6 +96,23 @@ describe("edição e exclusão", () => {
   it("lançamento particular é sempre do dono", () => {
     expect(podeEditar(null)).toBe(true);
     expect(podeExcluir(null)).toBe(true);
+  });
+});
+
+describe("estorno pelo gestor", () => {
+  it("vale em toda situação, inclusive a já paga e a particular", () => {
+    for (const s of [...TODOS, null]) expect(podeEstornar(s)).toBe(true);
+  });
+
+  it("só o já pago exige mexer no lote fechado", () => {
+    expect(estornoAposPagamento("RESSARCIDA")).toBe(true);
+    for (const s of ["ENVIADA", "APROVADA", "REJEITADA", null] as const) {
+      expect(estornoAposPagamento(s)).toBe(false);
+    }
+  });
+
+  it("o estorno não é uma transição: a máquina continua sem estado de estornado", () => {
+    expect(TRANSICOES.some((t) => String(t.para).includes("ESTORN"))).toBe(false);
   });
 });
 

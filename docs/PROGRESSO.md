@@ -14,6 +14,75 @@
 
 ## Sessões
 
+### 2026-11-03 — FASE 12: o gestor lança em nome de alguém, estorna e o sistema alerta duplicidade
+
+**Horário de registro:** 03/11/2026 às 15:34
+
+**O que foi feito:**
+
+Pedido do Luiz: *"os administradores terem opção de fazer lançamentos para
+algum usuário específico [...] e também a opção de excluir algum lançamento
+feito por outro usuário [...] isso requer o estorno [...] alertar o usuário que
+eventual lançamento já foi feito, seja pelo mesmo valor, local, data"*.
+
+Decisões tomadas com ele: estorno vale **inclusive para pedido já pago**; o
+lançamento feito pelo gestor **nasce aguardando aprovação**; duplicidade é
+**mesma pessoa + mesmo valor + mesma data**.
+
+1. **Lançar em nome de alguém (RF-64 a RF-66).** Seletor "Lançar para" dentro
+   do formulário de Transações, visível só ao administrador, "Eu mesmo" por
+   padrão (D18 — continua existindo uma porta só). Ao escolher a pessoa, o
+   formulário recarrega **as contas e categorias dela** (o lançamento vive na
+   subcoleção dela). O servidor só troca o escopo depois de confirmar o papel;
+   colaborador que forjar o campo recebe recusa tipada. O lançamento fica
+   marcado "lançado por Luiz" para a pessoa e para a fila.
+2. **Estorno (RF-67 a RF-69).** Botão "Estornar" na fila de Aprovações e em
+   Aprovados (A pagar **e** Pagos), com motivo obrigatório. Numa transação só
+   (D19): cópia integral vai para `estornos/{uid}-{id}`, o saldo da conta da
+   pessoa volta, e — se já estava pago — o lote fechado ganha `estornadoCents`
+   e `estornos[]` **sem reescrever o `totalCents`** (o dinheiro já saiu). O
+   comprovante em PDF traz o bloco "Estornos após o pagamento" e "Valor a
+   compensar". Lista de estornos no fim de Aprovados, só para o admin.
+3. **Duplicidade (RF-70, RF-71).** `lib/core/duplicidade.ts` (puro, D20):
+   antes de salvar, o servidor consulta só o dia do lançamento e, havendo
+   gêmeo, o formulário mostra os parecidos e pergunta "é outro gasto — salvar
+   mesmo assim?". Nunca bloqueia. A fila e Aprovados › A pagar marcam o par com
+   "⚠ possível duplicidade".
+
+**Sem migração** (RNF-13): lançamento sem `lancadoPor` é do dono; lote sem
+`estornadoCents` é lote sem estorno. Nenhum índice novo.
+
+**Arquivos criados/modificados:**
+- `specs/financo/01-SPEC.md` — v4.2, RF-64 a RF-71, RNF-13, exceções em RF-38/RF-43, critérios
+- `specs/financo/02-PLAN.md` — v4.2, D18 a D20, fase 12, riscos
+- `specs/financo/fases/FASE-12-GESTOR-LANCA-ESTORNA-E-DUPLICIDADE.md` *(novo)*
+- `src/types/index.ts` — `lancadoPor`, `EstornoNoLote`, `Estorno`, campos do lote
+- `src/lib/core/duplicidade.ts` *(novo)* · `tests/duplicidade.test.ts` *(novo, 13 testes)*
+- `src/lib/core/aprovacao.ts` — `ESTORNAVEIS`, `podeEstornar`, `estornoAposPagamento` · `tests/aprovacao.test.ts`
+- `src/lib/core/firestore.ts` — `escopoProntoDe`
+- `src/lib/core/repositories/transactions.repo.ts` — escopo opcional, `listarSemelhantes`, `estornarLancamento`, `listarEstornos`
+- `src/lib/core/repositories/accounts.repo.ts` · `categories.repo.ts` — escopo opcional na listagem
+- `src/actions/transactions.ts` — `paraUid`, `verificarDuplicidade`, `getContasECategoriasDe`
+- `src/actions/estornos.ts` *(novo)*
+- `src/lib/core/exports/cliente.ts` — bloco de estornos no comprovante
+- `src/components/reembolso/ModalEstorno.tsx` *(novo)* — modal e selo de duplicidade
+- `src/app/(app)/transacoes/page.tsx` · `TransacoesClient.tsx` · `admin/aprovacoes/AprovacoesClient.tsx` · `aprovados/page.tsx` · `AprovadosClient.tsx` · `relatorios/RelatoriosClient.tsx`
+
+**Pendências / próximos passos:**
+- **Não verificado na tela** (Art. 3): o `.env` desta máquina tem as chaves
+  do Firebase vazias e o login local falha com `auth/invalid-api-key`. Em
+  casa, com credenciais: testar lançar em nome de um colaborador, estornar um
+  pedido pago e conferir o comprovante, e provocar o aviso de duplicidade.
+- Revisão de código antes do commit corrigiu três pontos: a edição pelo dono
+  apagava a marca "lançado por"; o item estornado seguia na lista de Pagos até
+  recarregar; linha longa de estorno invadia a coluna do valor no PDF.
+  Registrados sem corrigir: `escopoParaLancar` relê dois perfis por chamada; e
+  pedido pago sem lote no banco é estornado sem registrar a compensação.
+- Avaliar aviso dentro do app para a pessoa estornada; script de reversão de
+  estorno se a necessidade aparecer (a cópia já guarda o documento inteiro).
+
+---
+
 ### 2026-09-03 — FASE 11: o sistema passa a saber para onde mandar o dinheiro
 
 **Horário de registro:** 03/09/2026 às 08:19

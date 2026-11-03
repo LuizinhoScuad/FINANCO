@@ -1,6 +1,8 @@
 import { getTransactions } from "@/actions/transactions";
 import { getCategories } from "@/actions/categories";
 import { getAccounts } from "@/actions/accounts";
+import { getEquipeAtiva } from "@/actions/reembolsos";
+import { requireActiveUser } from "@/lib/auth";
 import { TransacoesClient } from "./TransacoesClient";
 import { currentMonth } from "@/lib/utils";
 
@@ -27,12 +29,18 @@ export default async function TransacoesPage({
 
     const tudo = params.periodo === "tudo";
 
-    const [transactions, categories, accounts] = await Promise.all([
+    // O seletor "Lançar para" só existe para o administrador: a equipe nem
+    // chega ao navegador de quem não é (Art. 4, Art. 5).
+    const usuario = await requireActiveUser();
+    const isAdmin = usuario.role === "ADMIN";
+
+    const [transactions, categories, accounts, equipe] = await Promise.all([
         tudo
             ? getTransactions(undefined, undefined, params.type, params.categoryId, TETO_SEM_RECORTE)
             : getTransactions(m, y, params.type, params.categoryId),
         getCategories(),
         getAccounts(),
+        isAdmin ? getEquipeAtiva() : Promise.resolve([]),
     ]);
 
     return (
@@ -44,6 +52,8 @@ export default async function TransacoesPage({
             year={y}
             tudo={tudo}
             truncado={tudo && transactions.length >= TETO_SEM_RECORTE}
+            uidAtual={usuario.uid}
+            equipe={equipe}
         />
     );
 }

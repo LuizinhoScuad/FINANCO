@@ -107,6 +107,14 @@ export interface Transaction {
     approvedAt: Date | null;
     paymentBatchId: string | null;
     reimbursedAt: Date | null;
+
+    /**
+     * Quem registrou, quando não foi o próprio dono: o administrador lançando
+     * em nome da pessoa (RF-65). Nulo = o dono mesmo — é como todo lançamento
+     * anterior a esta funcionalidade é lido, sem migração (RNF-13).
+     */
+    lancadoPor: string | null;
+    lancadoPorNome: string | null;
 }
 
 /** Lançamento de reembolso com o dono identificado — visão do gestor. */
@@ -142,6 +150,48 @@ export interface PaymentBatch {
      * o cadastro atual.
      */
     dadosBancarios: DadosBancarios | null;
+    /**
+     * Estornos feitos DEPOIS do pagamento. `totalCents` continua sendo o que
+     * saiu do caixa; isto é o que a pessoa recebeu a mais e deve compensar.
+     * Zero e vazio em lote sem estorno — nenhuma migração (RNF-13).
+     */
+    estornadoCents: number;
+    estornos: EstornoNoLote[];
+}
+
+/** Um item estornado de um lote já pago, como gravado no próprio lote. */
+export interface EstornoNoLote {
+    transactionId: string;
+    description: string;
+    amountCents: number;
+    motivo: string;
+    estornadoEm: Date;
+    estornadoPorNome: string;
+}
+
+/**
+ * A cópia guardada de um lançamento estornado — `estornos/{transactionId}`.
+ *
+ * É o que torna o estorno reversível e auditável: quem, quando, por quê, e o
+ * documento inteiro como estava (Art. 6).
+ */
+export interface Estorno {
+    id: string;
+    userId: string;
+    userName: string;
+    description: string;
+    amount: number;
+    date: Date;
+    /** Situação do pedido na hora do estorno; nulo se era particular. */
+    aprovacaoNaEpoca: AprovacaoStatus | null;
+    /** Preenchido quando o estorno veio depois do pagamento. */
+    paymentBatchId: string | null;
+    motivo: string;
+    estornadoPor: string;
+    estornadoPorNome: string;
+    estornadoEm: Date;
+    /** O documento original, intacto. */
+    original: Record<string, unknown>;
 }
 
 export interface Budget {

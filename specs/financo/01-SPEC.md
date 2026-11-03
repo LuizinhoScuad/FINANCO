@@ -1,14 +1,21 @@
 ---
 programa: financo
 tipo: spec
-versao: 4.1
+versao: 4.2
 criado: 2026-08-09
-revisado: 2026-09-03
+revisado: 2026-11-03
 herda: ../00-CONSTITUTION.md
 referencia: 02-PLAN.md
 ---
 
 # SPEC — Financo v4
+
+> **Revisão v4.2 (03/11/2026).** Na apuração, o gestor descobria duas coisas
+> que o sistema não deixava resolver na hora: um gasto que o operador esqueceu
+> de lançar, e um lançamento feito em duplicidade. A v4.2 dá ao administrador
+> dois gestos — **lançar em nome de alguém** e **estornar** — e passa a
+> **alertar a duplicidade antes de salvar** (RF-64 a RF-71). Para isso o RF-38
+> e o RF-43 ganham a exceção do gestor; o resto não mudou de significado.
 
 > **Revisão v4.1 (03/09/2026).** O sistema aprovava e fechava o pagamento, mas
 > não sabia **para onde** o dinheiro ia: o comprovante que a Regiane usa para
@@ -100,7 +107,7 @@ pesam nas decisões desta spec:
 | RF-35 | Lançamento tem situação `PENDING` ou `COMPLETED`; só o efetivado mexe no saldo da conta |
 | RF-36 | Filtro por mês, ano, tipo e categoria, resolvido no banco |
 | RF-37 | Duplo clique em salvar não duplica lançamento nem corrompe saldo |
-| RF-38 | Em Transações cada pessoa vê e altera apenas os próprios lançamentos — inclusive o admin. O alcance ampliado do gestor existe só em Relatórios e Aprovações, e é somente leitura e decisão (ver RF-49) |
+| RF-38 | Em Transações cada pessoa vê e altera apenas os próprios lançamentos — inclusive o admin. O alcance ampliado do gestor existe só em Relatórios e Aprovações, e é somente leitura e decisão (ver RF-49). **Revisado na v4.2:** o administrador ganha dois gestos sobre o lançamento alheio, e só esses dois — lançar em nome da pessoa (RF-64) e estornar (RF-67). Editar lançamento de outra pessoa continua fora |
 
 ### Reembolso — pedido, aprovação e pagamento
 
@@ -109,7 +116,7 @@ pesam nas decisões desta spec:
 | RF-40 | O pedido **é** um lançamento marcado, não outro tipo de registro: a caixa "Pedir reembolso" no formulário de Transações, marcada por padrão |
 | RF-41 | Desmarcada, o lançamento é particular: fica fora da fila e fora dos Relatórios de reembolso |
 | RF-42 | A foto do comprovante é **opcional**; sem ela o pedido fica marcado "sem comprovante", visível ao gestor |
-| RF-43 | O dono corrige o pedido enquanto ele aguarda decisão ou está rejeitado; aprovado ou pago, ninguém mais altera nem exclui |
+| RF-43 | O dono corrige o pedido enquanto ele aguarda decisão ou está rejeitado; aprovado ou pago, ninguém mais altera nem exclui. **Revisado na v4.2:** a única exceção é o estorno pelo administrador (RF-67 a RF-69), que não altera — remove, com cópia guardada e motivo |
 | RF-44 | Pedido rejeitado exibe o motivo e volta para a fila ao ser corrigido e salvo |
 | RF-45 | Fila do gestor com o comprovante à vista; aprovar ou rejeitar, e a rejeição exige motivo escrito |
 | RF-46 | Fechar lote: agrupa os aprovados de uma pessoa num período e marca todos como atendidos de uma vez, com prévia obrigatória antes de escrever |
@@ -144,6 +151,24 @@ sabe tudo sobre a despesa, não sabia para onde mandar o dinheiro.
 | RF-61 | Em Admin › Usuários o administrador vê os dados de cada pessoa (recolhidos por padrão) e um marcador em quem ainda não cadastrou |
 | RF-62 | Ao fechar um lote, uma **cópia** dos dados da pessoa é gravada no lote, na mesma escrita atômica (Art. 2). O comprovante de reembolso em PDF traz o bloco "Dados para depósito" a partir dessa cópia; lote fechado antes desta versão, sem cópia, usa o cadastro atual da pessoa |
 | RF-63 | A prévia de fechamento avisa quando a pessoa não tem dados cadastrados, sem impedir o fechamento |
+
+### Lançamento pelo gestor, estorno e duplicidade
+
+Nasceu de três situações reais da apuração (03/11/2026): o operador esqueceu de
+lançar um gasto e o gestor só percebe na hora de pagar; um gasto foi lançado
+duas vezes e só aparece ao somar; e, nas duas, o gestor não tinha como agir
+sem pedir à pessoa que voltasse ao app.
+
+| ID | Requisito |
+|---|---|
+| RF-64 | O administrador pode registrar um lançamento **em nome de outra pessoa ativa**, pela **mesma tela de Transações** (D11): um seletor "Lançar para" que só o administrador vê, com "eu mesmo" por padrão. Conta e categoria são as **da pessoa escolhida**, não as do administrador |
+| RF-65 | O lançamento feito em nome de alguém fica **marcado com quem o fez** (`lancadoPor`), visível à pessoa em Transações e ao gestor na fila. Nasce `ENVIADA` como qualquer pedido: a máquina de estados não ganha atalho, e o gestor aprova em seguida |
+| RF-66 | Quem não é administrador não consegue lançar em nome de ninguém, mesmo forjando o campo: o servidor confere o papel e recusa com mensagem (Art. 5) |
+| RF-67 | O administrador pode **estornar** um lançamento de outra pessoa — em qualquer situação, inclusive já pago — com **motivo escrito obrigatório**. Estornar é remover o lançamento e desfazer seu efeito no saldo da conta, **na mesma operação atômica** (Art. 2) |
+| RF-68 | Todo estorno guarda uma **cópia integral** do lançamento removido, com quem estornou, quando, o motivo e a situação em que estava. É o que torna o gesto reversível por script (Art. 6) e auditável. O administrador vê a lista de estornos em Aprovados |
+| RF-69 | Estorno de pedido **já pago** não reescreve o pagamento: o lote fechado mantém o **total que de fato saiu** e passa a registrar o valor estornado e os itens estornados. O comprovante em PDF do lote traz o bloco "Estornos após o pagamento" e o **valor a compensar**. A compensação acontece por fora, como o próprio pagamento (ver Não-objetivos) |
+| RF-70 | Ao salvar um lançamento, o sistema procura **na mesma pessoa** outro lançamento com o **mesmo valor e a mesma data** e, se encontrar, mostra os parecidos e pergunta se salva mesmo assim. É aviso, não bloqueio: despesa legítima repetida existe. A verificação é feita no servidor, antes de gravar |
+| RF-71 | A fila de aprovação e Aprovados › A pagar marcam, pessoa a pessoa, os pedidos que têm um gêmeo (mesmo valor, mesma data), para que a duplicidade apareça **antes** de aprovar ou pagar — não depois |
 
 ### Finanças pessoais
 
@@ -197,6 +222,7 @@ v4 é outra construção.
 | RNF-09 | Erro sempre visível ao usuário, em português, sem JSON cru |
 | RNF-10 | Exportação gerada no navegador, sem custo de servidor |
 | RNF-12 | Documento de usuário sem o campo `dadosBancarios` é lido como "sem dados" e aciona o portão; lote sem a cópia usa o cadastro atual. Nenhuma migração automática (Art. 10) |
+| RNF-13 | Lançamento sem `lancadoPor` é lido como feito pelo próprio dono; lote sem `estornadoCents` é lido como sem estorno. Nenhuma migração (Art. 10) |
 
 ## Fatores críticos de sucesso
 
@@ -237,3 +263,6 @@ O sistema está pronto para a equipe quando, verificado com contas reais:
 - [ ] Guardião roda contra produção sem escrever nada e entrega achados nos três baldes
 - [ ] Uso pessoal do Luiz intacto: dados preservados, contas e orçamentos funcionando
 - [ ] Pessoa ativa sem dados para reembolso não passa da tela de cadastro; depois de salvar, o comprovante do lote fechado traz PIX e CPF corretos, e o administrador vê quem ainda não cadastrou
+- [ ] O administrador lança um gasto em nome de um colaborador, com a conta e a categoria dele; o lançamento aparece para o colaborador marcado "lançado por", entra na fila e é aprovado e pago normalmente. Um colaborador que force o campo recebe recusa
+- [ ] O administrador estorna um pedido já pago: o lançamento some, o saldo da conta volta, a cópia aparece na lista de estornos, e o comprovante do lote passa a mostrar o valor estornado a compensar — sem mudar o total pago
+- [ ] Lançar duas vezes o mesmo valor na mesma data mostra o aviso com o lançamento parecido; a fila e Aprovados marcam o par

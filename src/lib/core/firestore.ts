@@ -151,3 +151,16 @@ export async function escopoPronto(): Promise<Escopo> {
   await garantirSemeadura(esc);
   return esc;
 }
+
+/**
+ * Escopo semeado de OUTRA pessoa — o administrador lançando em nome dela (D18).
+ *
+ * Não verifica papel: quem chama já o confirmou. É deliberado que esta função
+ * não passe por `requireActiveUser`, senão o portão de dados bancários seria
+ * aplicado à pessoa errada.
+ */
+export async function escopoProntoDe(uid: string): Promise<Escopo> {
+  const esc = escopoDe(uid);
+  await garantirSemeadura(esc);
+  return esc;
+}

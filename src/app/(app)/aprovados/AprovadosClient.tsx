@@ -3,13 +3,16 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { fecharLoteDePagamento, getPedidos, getPreviaDeLote } from "@/actions/reembolsos";
+import { estornarLancamento } from "@/actions/estornos";
 import { exportarPedidosPDF, exportarPedidosXLSX, type LinhaPedido } from "@/lib/core/exports/cliente";
-import { rotulo } from "@/lib/core/aprovacao";
+import { rotulo, rotuloCurto } from "@/lib/core/aprovacao";
 import { atalhosDePeriodo, paraCampoDeData } from "@/lib/core/datas";
+import { marcarDuplicidades } from "@/lib/core/duplicidade";
 import { somar } from "@/lib/core/money";
 import { Chip } from "@/components/ui/Chip";
+import { ModalEstorno, SeloDuplicidade } from "@/components/reembolso/ModalEstorno";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
-import type { PedidoDeReembolso } from "@/types";
+import type { Estorno, PedidoDeReembolso } from "@/types";
 
 /**
  * Duas seções, duas perguntas diferentes.
@@ -31,6 +34,8 @@ type Props = {
   periodoInicial: string;
   /** Quantos pagamentos existem ao todo, ignorando período. */
   totalDePagos: number;
+  /** A trilha de estornos — só o administrador recebe (RF-68). */
+  estornos?: Estorno[];
 };
 
 /** Uma pessoa e tudo o que ela tem aprovado à espera do pagamento. */
@@ -47,11 +52,38 @@ type Bloco = {
 
 const AZUL = "#60a5fa";
 
-export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe, periodoInicial, totalDePagos }: Props) {
+export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe, periodoInicial, totalDePagos, estornos = [] }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [erro, setErro] = useState("");
   const [aviso, setAviso] = useState("");
+  const [estornando, setEstornando] = useState<PedidoDeReembolso | null>(null);
+
+  // Gêmeos entre os aprovados (RF-71): aparece antes de fechar o pagamento.
+  const gemeos = useMemo(() => marcarDuplicidades(pedidos), [pedidos]);
+
+  function confirmarEstorno(motivo: string) {
+    if (!estornando) return;
+    const alvo = estornando;
+    setEstornando(null);
+    setErro("");
+    setAviso("");
+    startTransition(async () => {
+      const res = await estornarLancamento(alvo.userId, alvo.id, motivo);
+      if (!res.ok) {
+        setErro(res.error);
+        return;
+      }
+      // A seção Pagos é estado local: o refresh renova as props, não ela.
+      setPagos((lista) => lista.filter((p) => !(p.id === alvo.id && p.userId === alvo.userId)));
+      setAviso(
+        res.data.aposPagamento
+          ? `Estornado: ${alvo.description}, ${formatCurrency(res.data.amount)} de ${alvo.userName}. Como já tinha sido pago, o valor consta como a compensar no comprovante do lote.`
+          : `Estornado: ${alvo.description}, ${formatCurrency(res.data.amount)} de ${alvo.userName}. A cópia está na lista de estornos abaixo.`,
+      );
+      router.refresh();
+    });
+  }
   const [previa, setPrevia] = useState<{
     bloco: Bloco;
     quantidade: number;
@@ -378,7 +410,13 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
 
             <div style={{ display: "flex", flexDirection: "column" }}>
               {bloco.pedidos.map((p) => (
-                <Linha key={`${p.userId}-${p.id}`} pedido={p} />
+                <Linha
+                  key={`${p.userId}-${p.id}`}
+                  pedido={p}
+                  gemeo={gemeos.has(p.id)}
+                  onEstornar={isAdmin ? () => setEstornando(p) : undefined}
+                  ocupado={isPending}
+                />
               ))}
             </div>
           </div>
@@ -488,11 +526,69 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
         ) : (
           <div style={{ display: "flex", flexDirection: "column" }}>
             {pagosFiltrados.map((p) => (
-              <Linha key={`pago-${p.userId}-${p.id}`} pedido={p} pago mostrarPessoa={isAdmin} />
+              <Linha
+                key={`pago-${p.userId}-${p.id}`}
+                pedido={p}
+                pago
+                mostrarPessoa={isAdmin}
+                onEstornar={isAdmin ? () => setEstornando(p) : undefined}
+                ocupado={isPending}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* ================= ESTORNOS ================= */}
+      {isAdmin && (
+        <>
+          <Titulo texto="Estornos" cor="#f59e0b" detalhe="o que foi removido pelo gestor, com motivo" />
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            {estornos.length === 0 ? (
+              <p style={{ padding: "1.5rem", textAlign: "center", color: "var(--color-muted)", fontSize: "0.85rem" }}>
+                Nenhum estorno até agora.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {estornos.map((e) => (
+                  <div
+                    key={e.id}
+                    style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", padding: "0.75rem 1rem", borderBottom: "1px solid var(--color-border)" }}
+                  >
+                    <div style={{ minWidth: "180px", flex: 1 }}>
+                      <div style={{ fontSize: "0.9rem" }}>
+                        {e.description}
+                        <span style={{ marginLeft: "0.5rem", fontSize: "0.65rem", fontWeight: 700, color: "var(--color-muted)" }}>
+                          era: {rotuloCurto(e.aprovacaoNaEpoca)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--color-muted)", marginTop: "2px" }}>
+                        {e.userName} · gasto em {formatDate(e.date)} · estornado em {formatDateTime(e.estornadoEm)} por {e.estornadoPorNome}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", marginTop: "3px", color: "#f59e0b" }}>
+                        Motivo: {e.motivo}
+                        {e.paymentBatchId && " · já estava pago — valor a compensar"}
+                      </div>
+                    </div>
+                    <span style={{ fontWeight: 700, fontFamily: "var(--font-display)", whiteSpace: "nowrap", color: "var(--color-muted)", textDecoration: "line-through" }}>
+                      {formatCurrency(e.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {estornando && (
+        <ModalEstorno
+          pedido={estornando}
+          ocupado={isPending}
+          onConfirmar={confirmarEstorno}
+          onCancelar={() => setEstornando(null)}
+        />
+      )}
 
       <style jsx>{`
         .rot {
@@ -511,10 +607,17 @@ function Linha({
   pedido: p,
   pago = false,
   mostrarPessoa = false,
+  gemeo = false,
+  onEstornar,
+  ocupado = false,
 }: {
   pedido: PedidoDeReembolso;
   pago?: boolean;
   mostrarPessoa?: boolean;
+  gemeo?: boolean;
+  /** Presente só para o administrador (RF-67). */
+  onEstornar?: () => void;
+  ocupado?: boolean;
 }) {
   return (
     <div
@@ -528,16 +631,32 @@ function Linha({
       }}
     >
       <div style={{ minWidth: "180px", flex: 1 }}>
-        <div style={{ fontSize: "0.9rem" }}>{p.description}</div>
+        <div style={{ fontSize: "0.9rem", display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          {p.description}
+          {gemeo && <SeloDuplicidade />}
+        </div>
         <div style={{ fontSize: "0.72rem", color: "var(--color-muted)", marginTop: "2px" }}>
           {formatDate(p.date)} · {p.categoryName}
           {mostrarPessoa && ` · ${p.userName}`}
           {pago
             ? p.reimbursedAt && ` · pago em ${formatDateTime(p.reimbursedAt)}`
             : p.approvedByName && ` · aprovado por ${p.approvedByName}`}
+          {p.lancadoPorNome && <span style={{ color: "#60a5fa" }}> · lançado por {p.lancadoPorNome}</span>}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        {onEstornar && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={onEstornar}
+            disabled={ocupado}
+            title="Remove o lançamento da pessoa, com cópia e motivo"
+            style={{ fontSize: "0.72rem", padding: "0.2rem 0.6rem", color: "var(--color-muted)" }}
+          >
+            Estornar
+          </button>
+        )}
         {p.receiptUrl ? (
           <a href={p.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.75rem", color: "var(--color-accent)", textDecoration: "none" }}>
             🧾 ver

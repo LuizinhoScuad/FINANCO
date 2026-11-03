@@ -1,14 +1,20 @@
 ---
 programa: financo
 tipo: plan
-versao: 4.1
+versao: 4.2
 criado: 2026-08-09
-revisado: 2026-09-03
+revisado: 2026-11-03
 herda: ../00-CONSTITUTION.md
 referencia: 01-SPEC.md
 ---
 
 # PLAN — Financo v4
+
+> **Revisão v4.2 (03/11/2026).** Lançamento em nome de outra pessoa, estorno
+> pelo gestor e alerta de duplicidade. Decisões novas: D18 (o seletor mora em
+> Transações, não numa tela nova), D19 (estorno é remoção com cópia; o lote
+> pago guarda o estornado à parte) e D20 (duplicidade é função pura, verificada
+> no servidor antes de gravar).
 
 > **Revisão v4.1 (03/09/2026).** Dados para reembolso (PIX e conta), com portão
 > obrigatório no acesso. Decisões novas: D16 (o dado mora no perfil e é copiado
@@ -53,7 +59,7 @@ app/
 
 actions/                     server actions FINAS — só orquestram
   transactions · accounts · categories · budgets
-  reembolsos · admin-users · dados-bancarios
+  reembolsos · admin-users · dados-bancarios · estornos
 
 lib/
   core/                      regra de negócio e acesso a dados, tipados
@@ -61,6 +67,7 @@ lib/
     money.ts                 aritmética monetária (pura, testável)
     aprovacao.ts             máquina de estados do reembolso (pura, testável)
     dados-bancarios.ts       CPF, chave PIX e leitura do mapa (pura, testável)
+    duplicidade.ts           o que conta como lançamento gêmeo (pura, testável)
     exports/cliente.ts       PDF e XLSX gerados no navegador
   guardrails/                proteções — Art. 1, 2 e 6
     transactions.ts          runTransaction / writeBatch
@@ -102,6 +109,9 @@ e que lê coleções inteiras em memória) — deletado ao fim da Fase 4.
 | D15 | Situação em `aprovacao`, separada de `status` | `status` já significa pago/pendente no controle pessoal. Reaproveitar o campo faria dois conceitos disputarem o mesmo nome — a confusão que a v3 acabou de eliminar |
 | D16 | Dados para reembolso no mapa `users/{uid}.dadosBancarios`, com **cópia** em `paymentBatches/{id}.dadosBancarios` no fechamento | É dado do perfil, com um dono só — não merece coleção nova nem regra nova (o cliente já não lê nada do banco). A cópia no lote segue a mesma desnormalização de `userName`: o comprovante prova o que foi enviado **à época**, e uma edição posterior não reescreve história. Campo ausente é lido como "sem dados" — nenhuma migração (Art. 10) |
 | D17 | O portão é decidido em `requireActiveUser()`, lendo status e presença dos dados na **mesma** leitura de `users/{uid}` que já existia; a tela do portão fica fora de `(app)` e usa `exigirDadosBancarios: false` | Uma porta só cobre layout, páginas, actions e `escopo()` — não há aba aberta, URL digitada ou ação que escape (Art. 5). Custo: zero leitura extra. A tela fora do grupo autenticado é o que evita o laço de redirecionamento, como já faz `/aguardando` |
+| D18 | Lançar em nome de alguém é um **seletor dentro do formulário de Transações**, não uma tela nem uma action nova de criação. O mesmo `createTransaction` recebe `paraUid`; o servidor troca o escopo (`escopoProntoDe(uid)`) só depois de confirmar o papel | Preserva D11: continua existindo uma porta de lançamento. O que muda é de quem é a subcoleção, e isso é decidido no servidor pelo papel (Art. 5). Conta e categoria vêm da pessoa alvo porque o lançamento vive na subcoleção dela — usar as do administrador deixaria referência órfã |
+| D19 | Estorno = **remoção com cópia**: numa transação só, o documento é copiado para `estornos/{id}` (com motivo, autor, situação na época), o saldo da conta é desfeito e o original é apagado. Lote pago **não tem o total reescrito**: ganha `estornadoCents` e a lista `estornos[]` | Um estado `ESTORNADA` no próprio lançamento exigiria excluí-lo de todo agregado pessoal (resumo do mês, orçamento, saldo) e de toda listagem — dezenas de pontos para errar. Apagar com cópia mantém a máquina de estados intacta e a reversão possível (Art. 6). O `totalCents` do lote é o que de fato saiu do caixa: reescrevê-lo mentiria sobre o passado (Art. 3); o estornado fica ao lado, como valor a compensar |
+| D20 | Duplicidade é **função pura** (`lib/core/duplicidade.ts`): mesma pessoa, mesmo valor em centavos, mesmo dia de calendário em UTC. O servidor a aplica antes de gravar (`verificarDuplicidade`), consultando só o dia do lançamento; as telas a aplicam sobre a lista já carregada para marcar pares | Uma regra, testada sem banco, usada nos dois lugares — a tela e o servidor nunca discordam sobre o que é gêmeo. A consulta recorta por dia na subcoleção da pessoa: nenhum índice novo e nada carregado inteiro (RNF-03) |
 
 ## Harness de orquestração
 
@@ -157,6 +167,7 @@ Guardião vem depois que existe o que vigiar.
 | [9](fases/FASE-9-QUALIDADE-GO-LIVE.md) | Testes, integração contínua, auditoria, piloto | pendente |
 | [10](fases/FASE-10-DATA-DE-CALENDARIO-E-FILTROS.md) | Dia de calendário, tela de Aprovados, filtros de relatório | ✅ concluída |
 | [11](fases/FASE-11-DADOS-PARA-REEMBOLSO.md) | Dados para reembolso: portão obrigatório, "Meus dados", cópia no lote, comprovante e painel | ⚙️ implementada — falta validar com dados reais |
+| [12](fases/FASE-12-GESTOR-LANCA-ESTORNA-E-DUPLICIDADE.md) | Gestor lança em nome de alguém, estorna com cópia e motivo, e o sistema alerta duplicidade | ⚙️ implementada — falta validar com dados reais |
 
 As fases 6 e 7 chegaram a ser implementadas e foram desfeitas na revisão v3. Os
 arquivos delas continuam em `fases/` como registro histórico — não são trabalho
@@ -176,3 +187,5 @@ a fazer.
 | Sessão de trabalho estourar o contexto | Cada arquivo de fase declara a lista fechada do que ler; a Fase 4 já está prevista como duas sessões |
 | Guardião escrever no banco por acidente | Script sem nenhum método de escrita, verificável por busca textual; credencial fora do repositório |
 | Portão de dados bancários barrar as sondas | `fumaca.mjs` semeia o usuário descartável já com os dados; as sondas que entram com a conta real do administrador exigem que ele tenha preenchido o próprio cadastro — pré-condição declarada na Fase 11 |
+| Estorno de item pago deixar lote e comprovante contando histórias diferentes | O lote guarda o estornado **ao lado** do total pago, nunca no lugar dele; o comprovante lê os dois e imprime o bloco de estornos. A cópia em `estornos/` é a prova do que foi removido |
+| Colaborador forjar `paraUid` e lançar na subcoleção de outro | O escopo só troca depois de `requireActiveUser` confirmar `role === "ADMIN"`; do contrário a action devolve recusa tipada. Coberto pela sonda de fumaça |

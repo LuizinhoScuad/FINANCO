@@ -16,8 +16,8 @@ function paraConta(id: string, d: Record<string, unknown>): Account {
   };
 }
 
-export async function listarContas(): Promise<Account[]> {
-  const esc = await escopoPronto();
+export async function listarContas(escopo?: Escopo): Promise<Account[]> {
+  const esc = escopo ?? (await escopoPronto());
   const snap = await esc.accounts.orderBy("createdAt", "asc").get();
   return snap.docs.map((d) => paraConta(d.id, d.data()));
 }

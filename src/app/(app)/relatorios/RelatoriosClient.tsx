@@ -592,6 +592,11 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe, to
                     {formatDate(lote.periodStart)} a {formatDate(lote.periodEnd)} · {lote.expenseCount} pedido(s)
                     {lote.paidAt && ` · pago em ${formatDateTime(lote.paidAt)}`}
                   </div>
+                  {lote.estornadoCents > 0 && (
+                    <div style={{ fontSize: "0.7rem", color: "#f59e0b", marginTop: "2px" }}>
+                      {lote.estornos.length} estorno(s) após o pagamento · {formatCurrency(lote.estornadoCents / 100)} a compensar
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   <span style={{ fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--color-accent)" }}>

@@ -163,6 +163,10 @@ function dinheiro(reais: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(reais);
 }
 
+function cortar(texto: string, maximo: number) {
+  return texto.length > maximo ? `${texto.slice(0, maximo - 1)}…` : texto;
+}
+
 export type LinhaPedido = {
   data: Date | string;
   pessoa: string;
@@ -274,6 +278,8 @@ export async function exportarComprovanteDeLote(
     expenseCount: number;
     totalCents: number;
     dadosBancarios?: DadosBancarios | null;
+    estornadoCents?: number;
+    estornos?: Array<{ description: string; amountCents: number; motivo: string; estornadoEm: Date }>;
   },
   linhas: LinhaPedido[],
 ) {
@@ -283,6 +289,22 @@ export async function exportarComprovanteDeLote(
         ...descreverDadosBancarios(lote.dadosBancarios),
       ]
     : [{ rotulo: "Dados para depósito", valor: "não cadastrados" }];
+
+  // O total pago é história e não muda; o que foi estornado depois aparece
+  // ao lado, como valor a compensar (RF-69).
+  const estornos =
+    (lote.estornadoCents ?? 0) > 0
+      ? [
+          { rotulo: "ESTORNOS APÓS O PAGAMENTO", valor: "" },
+          ...(lote.estornos ?? []).map((e) => ({
+            // O resumo escreve numa linha só, sem quebra: corta antes de
+            // invadir a coluna do valor.
+            rotulo: cortar(`${dataCurta(e.estornadoEm)} · ${e.description} — ${e.motivo}`, 80),
+            valor: `− ${dinheiro(e.amountCents / 100)}`,
+          })),
+          { rotulo: "VALOR A COMPENSAR", valor: dinheiro((lote.estornadoCents ?? 0) / 100) },
+        ]
+      : [];
 
   await montarPDF({
     titulo: "Comprovante de reembolso",
@@ -299,6 +321,7 @@ export async function exportarComprovanteDeLote(
       { rotulo: "Pedidos atendidos", valor: String(lote.expenseCount) },
       { rotulo: "Pago em", valor: lote.paidAt ? dataCurta(lote.paidAt) : "—" },
       { rotulo: "TOTAL PAGO", valor: dinheiro(lote.totalCents / 100) },
+      ...estornos,
       ...deposito,
     ],
     arquivo: nomeArquivo(`reembolso-${lote.userName.toLowerCase().replace(/\s+/g, "-")}`, "pdf"),
