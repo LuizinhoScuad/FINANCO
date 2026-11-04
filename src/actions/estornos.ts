@@ -5,9 +5,10 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { estornarLancamento as estornar, listarEstornos } from "@/lib/core/repositories/transactions.repo";
 import { buscarPerfil } from "@/lib/core/repositories/users.repo";
+import { resumirEstorno } from "@/lib/core/aprovacao";
 import { traduzirErro } from "@/lib/guardrails/transactions";
 import { fail, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
-import type { Estorno } from "@/types";
+import type { EstornoResumido } from "@/types";
 
 /**
  * Estorno — o gesto do administrador sobre o lançamento alheio (RF-67 a RF-69).
@@ -48,7 +49,8 @@ export async function estornarLancamento(
   }
 }
 
-export async function getEstornos(): Promise<Estorno[]> {
+/** A trilha de estornos para a tela — sem a cópia do documento (ver `resumirEstorno`). */
+export async function getEstornos(): Promise<EstornoResumido[]> {
   await requireAdmin();
-  return listarEstornos();
+  return (await listarEstornos()).map(resumirEstorno);
 }

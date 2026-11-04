@@ -7,6 +7,7 @@ import {
   podeEditar,
   podeEstornar,
   podeExcluir,
+  resumirEstorno,
   rotulo,
   rotuloCurto,
   TRANSICOES,
@@ -149,5 +150,55 @@ describe("integridade da máquina", () => {
       for (const t of TRANSICOES) if (alcancados.has(t.de)) alcancados.add(t.para);
     }
     for (const s of TODOS) expect(alcancados.has(s)).toBe(true);
+  });
+});
+
+describe("o estorno que vai para a tela", () => {
+  /** O que importa de um Timestamp do Firestore: classe com `toDate()`. */
+  class TimestampFalso {
+    toDate() {
+      return new Date(0);
+    }
+  }
+
+  const estorno = {
+    id: "u1-t1",
+    userId: "u1",
+    userName: "José Carlos",
+    description: "Combustível",
+    amount: 2000,
+    date: new Date("2026-11-03T12:00:00Z"),
+    aprovacaoNaEpoca: "APROVADA" as const,
+    paymentBatchId: null,
+    motivo: "Lançado em duplicidade",
+    estornadoPor: "admin",
+    estornadoPorNome: "Luciano",
+    estornadoEm: new Date("2026-11-04T10:00:00Z"),
+    original: { description: "Combustível", date: new TimestampFalso(), createdAt: new TimestampFalso() },
+  };
+
+  it("deixa a cópia do documento para trás e leva todo o resto", () => {
+    const resumo = resumirEstorno(estorno);
+    expect("original" in resumo).toBe(false);
+    const { original: _original, ...esperado } = estorno;
+    void _original;
+    expect(resumo).toEqual(esperado);
+  });
+
+  it("não carrega nenhuma classe além de Date — é o que o Next aceita na fronteira servidor → tela", () => {
+    const temClasseEstranha = (v: unknown): boolean => {
+      if (v === null || typeof v !== "object") return false;
+      if (v instanceof Date) return false;
+      if (Array.isArray(v)) return v.some(temClasseEstranha);
+      if (Object.getPrototypeOf(v) !== Object.prototype) return true;
+      return Object.values(v).some(temClasseEstranha);
+    };
+    expect(temClasseEstranha(estorno)).toBe(true); // o cru quebraria
+    expect(temClasseEstranha(resumirEstorno(estorno))).toBe(false);
+  });
+
+  it("não altera o estorno original", () => {
+    resumirEstorno(estorno);
+    expect(estorno.original.date).toBeInstanceOf(TimestampFalso);
   });
 });

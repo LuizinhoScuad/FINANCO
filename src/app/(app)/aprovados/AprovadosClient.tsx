@@ -12,7 +12,7 @@ import { somar } from "@/lib/core/money";
 import { Chip } from "@/components/ui/Chip";
 import { ModalEstorno, SeloDuplicidade } from "@/components/reembolso/ModalEstorno";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
-import type { Estorno, PedidoDeReembolso } from "@/types";
+import type { EstornoResumido, PedidoDeReembolso } from "@/types";
 
 /**
  * Duas seções, duas perguntas diferentes.
@@ -35,7 +35,7 @@ type Props = {
   /** Quantos pagamentos existem ao todo, ignorando período. */
   totalDePagos: number;
   /** A trilha de estornos — só o administrador recebe (RF-68). */
-  estornos?: Estorno[];
+  estornos?: EstornoResumido[];
 };
 
 /** Uma pessoa e tudo o que ela tem aprovado à espera do pagamento. */

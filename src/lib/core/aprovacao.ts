@@ -1,4 +1,4 @@
-import type { AprovacaoStatus, UserRole } from "@/types";
+import type { AprovacaoStatus, Estorno, EstornoResumido, UserRole } from "@/types";
 
 /**
  * Máquina de estados do reembolso — fonte ÚNICA da regra.
@@ -161,4 +161,18 @@ export function corDoStatus(status: AprovacaoStatus | null): { cor: string; fund
     RESSARCIDA: { cor: "#00d98b", fundo: "rgba(0, 217, 139, 0.12)" },
   };
   return mapa[status];
+}
+
+/**
+ * O estorno como a tela o recebe: tudo menos a cópia do documento (RF-68).
+ *
+ * A cópia fica guardada intacta para auditoria e reversão (Art. 6) — e por
+ * isso mesmo carrega os carimbos de data crus do Firestore, que o Next recusa
+ * ao passar props do servidor para o componente cliente. Foi o primeiro
+ * estorno do sistema que derrubou a tela Aprovados. Daqui sai só o que se lê.
+ */
+export function resumirEstorno(estorno: Estorno): EstornoResumido {
+  const resumo: Partial<Pick<Estorno, "original">> & EstornoResumido = { ...estorno };
+  delete resumo.original;
+  return resumo;
 }

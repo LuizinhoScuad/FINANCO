@@ -194,6 +194,9 @@ export interface Estorno {
     original: Record<string, unknown>;
 }
 
+/** O estorno como a tela o recebe: tudo menos a cópia do documento. */
+export type EstornoResumido = Omit<Estorno, "original">;
+
 export interface Budget {
     id: string;
     categoryId: string;

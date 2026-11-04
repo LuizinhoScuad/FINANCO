@@ -14,6 +14,61 @@
 
 ## Sessões
 
+### 2026-11-04 — Aprovados voltou a abrir depois do primeiro estorno
+
+**Horário de registro:** 04/11/2026 às 12:41
+
+**O que foi feito:**
+
+Pedido do Luiz: o Luciano fez um estorno em nome do José Carlos (R$ 2.000,00),
+lançou outro de R$ 1.750,00, aprovou 21 lançamentos dele e, ao abrir Aprovados
+para fechar o pagamento, a tela caía em "Não foi possível carregar esta tela"
+(código 3063389512).
+
+**Causa.** Não era conexão com o banco. Cada estorno guarda a cópia inteira do
+lançamento original (`estornos/{id}.original`), crua, com `Timestamp` do
+Firestore dentro. A página Aprovados mandava a lista de estornos completa,
+cópia incluída, do servidor para o componente cliente — e o Next recusa
+instâncias de classe nessa fronteira. A tela quebrava no render do servidor,
+para o gestor, a partir do primeiro estorno existente. Nenhum dado foi afetado.
+
+**Correção.**
+
+1. `resumirEstorno` em `lib/core/aprovacao.ts`: função pura que devolve o
+   estorno sem a cópia do documento. A cópia continua guardada e lida intacta
+   no repositório (é o que permite auditoria e reversão, Art. 6); só não vai
+   mais para a tela, que nunca a exibia.
+2. `getEstornos` (action) passa a devolver `EstornoResumido[]`; o tipo novo
+   vive em `types/index.ts` e a tela Aprovados o consome.
+3. Três testes novos em `tests/aprovacao.test.ts`: a cópia fica para trás,
+   nada além de `Date` sobra no resultado, e o estorno de origem não é mutado.
+
+**Revisão de código (/code-review):** apontou que a primeira versão convertia
+a cópia dentro do repositório (quebraria uma reversão futura) e duplicava o
+tipo à mão na action. Ambas as coisas foram desfeitas em favor da função pura.
+
+**Arquivos modificados:**
+
+- `src/lib/core/aprovacao.ts` — `resumirEstorno`
+- `src/actions/estornos.ts` — `getEstornos` devolve o resumo
+- `src/app/(app)/aprovados/AprovadosClient.tsx` — prop tipada como `EstornoResumido[]`
+- `src/types/index.ts` — tipo `EstornoResumido`
+- `tests/aprovacao.test.ts` — três testes novos (103 no total)
+
+**Portões:** estrutura íntegra · 103 testes · typecheck limpo · lint com os 3
+avisos antigos do gráfico mensal · build OK.
+
+**Não verificado:** o `.env` desta máquina está sem a chave privada, então a
+correção não foi exercitada contra o banco real. Confirmar em produção:
+abrir Aprovados como gestor e fechar o pagamento do José Carlos.
+
+**Pendência observada na revisão (fora do escopo):** `serializar` em
+`snapshot.repo.ts` só converte `Timestamp` no nível de cima; um carimbo
+aninhado (ex.: `estornos[].estornadoEm` num lote) sai no backup como
+`{_seconds,_nanoseconds}` e não é reconhecido na restauração.
+
+---
+
 ### 2026-11-03 — FASE 12: o gestor lança em nome de alguém, estorna e o sistema alerta duplicidade
 
 **Horário de registro:** 03/11/2026 às 15:34
