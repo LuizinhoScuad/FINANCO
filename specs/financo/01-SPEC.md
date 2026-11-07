@@ -1,14 +1,19 @@
 ---
 programa: financo
 tipo: spec
-versao: 4.2
+versao: 4.3
 criado: 2026-08-09
-revisado: 2026-11-03
+revisado: 2026-11-07
 herda: ../00-CONSTITUTION.md
 referencia: 02-PLAN.md
 ---
 
 # SPEC — Financo v4
+
+> **Revisão v4.3 (07/11/2026).** Quem fotografa o recibo na hora, joga o papel
+> fora e lança depois não conseguia anexar a foto: o app só abria a câmera. A
+> v4.3 acrescenta um requisito só — o comprovante pode vir **da galeria do
+> celular** além da câmera (RF-72). Nada do que existia mudou de significado.
 
 > **Revisão v4.2 (03/11/2026).** Na apuração, o gestor descobria duas coisas
 > que o sistema não deixava resolver na hora: um gasto que o operador esqueceu
@@ -108,6 +113,7 @@ pesam nas decisões desta spec:
 | RF-36 | Filtro por mês, ano, tipo e categoria, resolvido no banco |
 | RF-37 | Duplo clique em salvar não duplica lançamento nem corrompe saldo |
 | RF-38 | Em Transações cada pessoa vê e altera apenas os próprios lançamentos — inclusive o admin. O alcance ampliado do gestor existe só em Relatórios e Aprovações, e é somente leitura e decisão (ver RF-49). **Revisado na v4.2:** o administrador ganha dois gestos sobre o lançamento alheio, e só esses dois — lançar em nome da pessoa (RF-64) e estornar (RF-67). Editar lançamento de outra pessoa continua fora |
+| RF-72 | A foto do comprovante pode ser **tirada na hora ou escolhida da galeria do celular**, nos dois pontos de anexo (o formulário de lançamento e o "+ recibo" da lista). Os dois caminhos seguem o mesmo fluxo de envio e OCR (RF-32, RF-33) |
 
 ### Reembolso — pedido, aprovação e pagamento
 

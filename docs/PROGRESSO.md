@@ -14,6 +14,60 @@
 
 ## Sessões
 
+### 2026-11-07 — FASE 13: o comprovante pode vir da galeria do celular
+
+**Horário de registro:** 07/11/2026 às 14:11
+
+**O que foi feito:**
+
+Pedido do Luiz: *"alguns usuários tiraram a foto dos recibos que ficaram
+armazenados em seus celulares para posterior lançamento no sistema e imediato
+descarte do recibo [...] ter um botão onde apareça as fotos da biblioteca do
+celular para a escolha"*.
+
+**Causa.** Os dois pontos de anexo (botão do formulário e "+ recibo" da lista)
+usavam `<input type="file" capture="environment">`, e o `capture` força o
+celular a abrir **só a câmera**. A foto já guardada nunca podia ser escolhida.
+
+**Mudança — só tela, nada no servidor:**
+
+1. Formulário de lançamento: o botão único "📷 Escanear Recibo (OCR)" virou
+   dois, lado a lado — **"📷 Tirar foto"** (input com `capture`) e
+   **"🖼️ Escolher da galeria"** (input sem `capture`). Os dois passam pelo mesmo
+   `handleOCR` (upload → OCR → pré-preenchimento), que agora limpa o `value`
+   dos dois inputs.
+2. "+ recibo" da lista: o input perdeu o `capture`; o próprio celular passa a
+   oferecer câmera ou galeria.
+3. Specs antes do código: SPEC v4.3 (RF-72), PLAN v4.3 (D21, fase 13 na
+   tabela), `FASE-13-RECIBO-DA-GALERIA.md`.
+
+**Arquivos modificados:**
+
+- `src/app/(app)/transacoes/TransacoesClient.tsx` — `galeriaRef`, dois botões, `attachRef` sem `capture`
+- `specs/financo/01-SPEC.md` — v4.3, RF-72
+- `specs/financo/02-PLAN.md` — v4.3, D21, fase 13
+- `specs/financo/fases/FASE-13-RECIBO-DA-GALERIA.md` *(novo)*
+
+**Portões:** estrutura íntegra · 103 testes · typecheck · lint (3 avisos
+antigos do gráfico) · build OK. Sem teste unitário novo: não há regra pura.
+
+**Verificado na tela** (navegador embutido, viewport 375×812, logado pelo
+Luiz): os dois botões na mesma linha, sem rolagem lateral; inputs ocultos
+corretos; console sem erro.
+
+**Não verificado (Art. 3):** o efeito do `capture` só existe no aparelho.
+Depois do deploy, o Luiz confere no iPhone e no Android: "Tirar foto" abre a
+câmera, "Escolher da galeria" abre a Fototeca/Galeria, "+ recibo" oferece as
+duas opções, e uma foto antiga de recibo tem valor e data lidos pelo OCR
+(critérios 4 a 6 da fase).
+
+**Pendências / próximos passos:**
+- Registrar na fase o resultado dos critérios 4 a 6.
+- Se recibos de galeria passarem de 10 MB com frequência, avaliar
+  redimensionar no navegador antes do envio (fase própria).
+
+---
+
 ### 2026-11-04 — Aprovados voltou a abrir depois do primeiro estorno
 
 **Horário de registro:** 04/11/2026 às 12:41

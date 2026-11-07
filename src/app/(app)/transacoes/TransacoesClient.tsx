@@ -102,6 +102,7 @@ export function TransacoesClient({
     const [receiptUrl, setReceiptUrl] = useState("");
     const [receiptPreview, setReceiptPreview] = useState("");
     const cameraRef = useRef<HTMLInputElement>(null);
+    const galeriaRef = useRef<HTMLInputElement>(null);
     const attachRef = useRef<HTMLInputElement>(null);
     const [attachingId, setAttachingId] = useState<string | null>(null);
     const [erro, setErro] = useState("");
@@ -118,6 +119,7 @@ export function TransacoesClient({
         setOcrStatus("Enviando recibo...");
         setReceiptPreview(URL.createObjectURL(file));
         if (cameraRef.current) cameraRef.current.value = "";
+        if (galeriaRef.current) galeriaRef.current.value = "";
 
         // 1. Upload com timeout de 30s
         let url = "";
@@ -699,12 +701,12 @@ export function TransacoesClient({
                 )}
             </div>
 
-            {/* Input oculto global para vincular recibo a transação existente */}
+            {/* Input oculto global para vincular recibo a transação existente.
+                Sem `capture`, o celular oferece câmera ou galeria (RF-72). */}
             <input
                 ref={attachRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 style={{ display: "none" }}
                 onChange={handleAttachReceipt}
             />
@@ -798,7 +800,7 @@ export function TransacoesClient({
                                 </div>
                             </div>
 
-                            {/* Botão OCR */}
+                            {/* Recibo: câmera ou galeria (RF-72). Só o `capture` os distingue. */}
                             <div>
                                 <input
                                     ref={cameraRef}
@@ -808,15 +810,33 @@ export function TransacoesClient({
                                     style={{ display: "none" }}
                                     onChange={handleOCR}
                                 />
-                                <button
-                                    type="button"
-                                    className="btn btn-ghost"
-                                    onClick={() => cameraRef.current?.click()}
-                                    disabled={ocrLoading}
-                                    style={{ width: "100%", fontSize: "0.85rem", borderStyle: "dashed", color: ocrLoading ? "var(--color-muted)" : "var(--color-accent)", borderColor: "var(--color-accent)" }}
-                                >
-                                    {ocrLoading ? `⏳ ${ocrStatus}` : "📷 Escanear Recibo (OCR)"}
-                                </button>
+                                <input
+                                    ref={galeriaRef}
+                                    type="file"
+                                    accept="image/*"
+                                    style={{ display: "none" }}
+                                    onChange={handleOCR}
+                                />
+                                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => cameraRef.current?.click()}
+                                        disabled={ocrLoading}
+                                        style={{ flex: 1, minWidth: "140px", fontSize: "0.85rem", borderStyle: "dashed", color: ocrLoading ? "var(--color-muted)" : "var(--color-accent)", borderColor: "var(--color-accent)" }}
+                                    >
+                                        📷 Tirar foto
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={() => galeriaRef.current?.click()}
+                                        disabled={ocrLoading}
+                                        style={{ flex: 1, minWidth: "140px", fontSize: "0.85rem", borderStyle: "dashed", color: ocrLoading ? "var(--color-muted)" : "var(--color-accent)", borderColor: "var(--color-accent)" }}
+                                    >
+                                        🖼️ Escolher da galeria
+                                    </button>
+                                </div>
 
                                 {/* Preview da imagem + campo hidden com URL */}
                                 {receiptPreview && (

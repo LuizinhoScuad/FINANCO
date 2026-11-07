@@ -1,14 +1,18 @@
 ---
 programa: financo
 tipo: plan
-versao: 4.2
+versao: 4.3
 criado: 2026-08-09
-revisado: 2026-11-03
+revisado: 2026-11-07
 herda: ../00-CONSTITUTION.md
 referencia: 01-SPEC.md
 ---
 
 # PLAN — Financo v4
+
+> **Revisão v4.3 (07/11/2026).** O comprovante pode vir da galeria do celular.
+> Decisão nova: D21 (câmera e galeria são dois `<input type=file>`; só o
+> atributo `capture` os distingue).
 
 > **Revisão v4.2 (03/11/2026).** Lançamento em nome de outra pessoa, estorno
 > pelo gestor e alerta de duplicidade. Decisões novas: D18 (o seletor mora em
@@ -112,6 +116,7 @@ e que lê coleções inteiras em memória) — deletado ao fim da Fase 4.
 | D18 | Lançar em nome de alguém é um **seletor dentro do formulário de Transações**, não uma tela nem uma action nova de criação. O mesmo `createTransaction` recebe `paraUid`; o servidor troca o escopo (`escopoProntoDe(uid)`) só depois de confirmar o papel | Preserva D11: continua existindo uma porta de lançamento. O que muda é de quem é a subcoleção, e isso é decidido no servidor pelo papel (Art. 5). Conta e categoria vêm da pessoa alvo porque o lançamento vive na subcoleção dela — usar as do administrador deixaria referência órfã |
 | D19 | Estorno = **remoção com cópia**: numa transação só, o documento é copiado para `estornos/{id}` (com motivo, autor, situação na época), o saldo da conta é desfeito e o original é apagado. Lote pago **não tem o total reescrito**: ganha `estornadoCents` e a lista `estornos[]` | Um estado `ESTORNADA` no próprio lançamento exigiria excluí-lo de todo agregado pessoal (resumo do mês, orçamento, saldo) e de toda listagem — dezenas de pontos para errar. Apagar com cópia mantém a máquina de estados intacta e a reversão possível (Art. 6). O `totalCents` do lote é o que de fato saiu do caixa: reescrevê-lo mentiria sobre o passado (Art. 3); o estornado fica ao lado, como valor a compensar |
 | D20 | Duplicidade é **função pura** (`lib/core/duplicidade.ts`): mesma pessoa, mesmo valor em centavos, mesmo dia de calendário em UTC. O servidor a aplica antes de gravar (`verificarDuplicidade`), consultando só o dia do lançamento; as telas a aplicam sobre a lista já carregada para marcar pares | Uma regra, testada sem banco, usada nos dois lugares — a tela e o servidor nunca discordam sobre o que é gêmeo. A consulta recorta por dia na subcoleção da pessoa: nenhum índice novo e nada carregado inteiro (RNF-03) |
+| D21 | Câmera e galeria são **dois `<input type="file">`** no mesmo formulário, ligados ao mesmo `handleOCR`: o que os distingue é só o atributo `capture="environment"` (com ele, o celular abre a câmera; sem ele, a biblioteca de fotos). No "+ recibo" da lista, o input único perde o `capture` e o próprio sistema do celular oferece câmera ou galeria | Nenhum componente novo, nenhuma biblioteca, nenhuma permissão extra — é o navegador que já sabe abrir os dois. Upload, regras do Storage e OCR não mudam: a foto chega pelo mesmo caminho, só de outra origem |
 
 ## Harness de orquestração
 
@@ -168,6 +173,7 @@ Guardião vem depois que existe o que vigiar.
 | [10](fases/FASE-10-DATA-DE-CALENDARIO-E-FILTROS.md) | Dia de calendário, tela de Aprovados, filtros de relatório | ✅ concluída |
 | [11](fases/FASE-11-DADOS-PARA-REEMBOLSO.md) | Dados para reembolso: portão obrigatório, "Meus dados", cópia no lote, comprovante e painel | ⚙️ implementada — falta validar com dados reais |
 | [12](fases/FASE-12-GESTOR-LANCA-ESTORNA-E-DUPLICIDADE.md) | Gestor lança em nome de alguém, estorna com cópia e motivo, e o sistema alerta duplicidade | ⚙️ implementada — falta validar com dados reais |
+| [13](fases/FASE-13-RECIBO-DA-GALERIA.md) | O comprovante pode vir da galeria do celular, além da câmera | ⚙️ implementada — falta validar no celular |
 
 As fases 6 e 7 chegaram a ser implementadas e foram desfeitas na revisão v3. Os
 arquivos delas continuam em `fases/` como registro histórico — não são trabalho
