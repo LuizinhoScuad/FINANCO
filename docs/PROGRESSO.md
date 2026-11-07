@@ -61,8 +61,11 @@ câmera, "Escolher da galeria" abre a Fototeca/Galeria, "+ recibo" oferece as
 duas opções, e uma foto antiga de recibo tem valor e data lidos pelo OCR
 (critérios 4 a 6 da fase).
 
+**Validado em produção (14:57, iPhone do Luiz):** "Funcionou" — câmera e
+galeria no formulário, e o OCR leu a foto antiga. Android fica pendente.
+
 **Pendências / próximos passos:**
-- Registrar na fase o resultado dos critérios 4 a 6.
+- Conferir no primeiro Android da equipe (critério 5 da fase).
 - Se recibos de galeria passarem de 10 MB com frequência, avaliar
   redimensionar no navegador antes do envio (fase própria).
 

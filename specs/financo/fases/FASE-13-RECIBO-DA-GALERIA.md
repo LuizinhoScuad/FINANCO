@@ -6,9 +6,9 @@ titulo: O comprovante pode vir da galeria do celular
 status: implementada
 implementada_em: 2026-11-07
 observacao: >
-  Implementada com os portões de código verdes e conferida no navegador em
-  modo celular. O efeito do atributo `capture` só existe num celular de
-  verdade: a validação final é do Luiz, no iPhone e no Android (critérios 4 e 5).
+  Implementada, portões verdes, conferida no navegador em modo celular e
+  validada pelo Luiz em produção no iPhone (07/11/2026). Android ainda não
+  conferido (critério 5).
 depende_de: [12]
 herda: ../../00-CONSTITUTION.md
 ---
@@ -84,12 +84,12 @@ função a testar). A prova é visual e no aparelho.
 | 1 | Portões verdes | ✅ estrutura íntegra · 103 testes · typecheck · lint (só os 3 avisos antigos do gráfico) · build |
 | 2 | No formulário, dois botões lado a lado; "Escolher da galeria" abre o seletor de arquivos e a foto escolhida segue o fluxo de antes (preview, envio, status, `receiptUrl`) | ✅ navegador embutido, viewport 375×812 (07/11/2026): os dois botões na mesma linha, 147 px cada, documento com 375 px (sem rolagem lateral); o input da galeria existe sem `capture` e aponta para o mesmo `handleOCR`. Console sem erro. O envio real de uma foto não foi exercitado aqui |
 | 3 | O "+ recibo" da lista continua funcionando | ✅ o input `attachRef` está na página sem `capture`, ligado a `handleAttachReceipt` como antes |
-| 4 | **iPhone:** "Tirar foto" abre a câmera; "Escolher da galeria" abre a Fototeca; "+ recibo" oferece as duas opções | ⚠️ **NÃO VERIFICADO** — exige o aparelho; validação do Luiz após o deploy |
-| 5 | **Android:** mesmo roteiro do critério 4 | ⚠️ **NÃO VERIFICADO** — exige o aparelho |
-| 6 | Foto antiga de recibo escolhida da galeria tem valor e data lidos pelo OCR | ⚠️ **NÃO VERIFICADO** — exige o aparelho |
+| 4 | **iPhone:** "Tirar foto" abre a câmera; "Escolher da galeria" abre a Fototeca; "+ recibo" oferece as duas opções | ✅ verificado pelo Luiz em produção, 07/11/2026, logo após o deploy ("Funcionou") |
+| 5 | **Android:** mesmo roteiro do critério 4 | ⚠️ **NÃO VERIFICADO** — fica para quando alguém da equipe com Android usar |
+| 6 | Foto antiga de recibo escolhida da galeria tem valor e data lidos pelo OCR | ✅ verificado pelo Luiz em produção, 07/11/2026 |
 
 ## Pendente para a próxima sessão
 
-- Luiz confere os critérios 4 a 6 no celular e registra aqui.
+- Conferir o critério 5 no primeiro Android da equipe que usar.
 - Se recibos de galeria passarem de 10 MB com frequência, avaliar
   redimensionar no navegador antes do envio (fase própria).
