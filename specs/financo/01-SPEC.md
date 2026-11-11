@@ -1,14 +1,21 @@
 ---
 programa: financo
 tipo: spec
-versao: 4.3
+versao: 4.4
 criado: 2026-08-09
-revisado: 2026-11-07
+revisado: 2026-11-11
 herda: ../00-CONSTITUTION.md
 referencia: 02-PLAN.md
 ---
 
 # SPEC — Financo v4
+
+> **Revisão v4.4 (11/11/2026).** O estorno resolve a duplicidade descoberta
+> antes de pagar; descoberta **depois**, com o dinheiro já na conta da pessoa,
+> faltava um jeito de acertar dentro do sistema. A v4.4 acrescenta o
+> **desconto**: um lançamento de reembolso com valor negativo, feito pelo
+> administrador em nome da pessoa, que abate do próximo pagamento dela
+> (RF-73 a RF-77). Nada do que existia mudou de significado.
 
 > **Revisão v4.3 (07/11/2026).** Quem fotografa o recibo na hora, joga o papel
 > fora e lança depois não conseguia anexar a foto: o app só abria a câmera. A
@@ -176,6 +183,21 @@ sem pedir à pessoa que voltasse ao app.
 | RF-70 | Ao salvar um lançamento, o sistema procura **na mesma pessoa** outro lançamento com o **mesmo valor e a mesma data** e, se encontrar, mostra os parecidos e pergunta se salva mesmo assim. É aviso, não bloqueio: despesa legítima repetida existe. A verificação é feita no servidor, antes de gravar |
 | RF-71 | A fila de aprovação e Aprovados › A pagar marcam, pessoa a pessoa, os pedidos que têm um gêmeo (mesmo valor, mesma data), para que a duplicidade apareça **antes** de aprovar ou pagar — não depois |
 
+### Desconto de valor já pago
+
+Nasceu de um pedido do Luciano, trazido pelo Luiz (11/11/2026): ele percebeu
+lançamentos que **já tinham sido pagos** e queria "deixar no mês corrente o
+valor negativo do que já foi pago anteriormente", porque estornar não devolve
+dinheiro que já está na conta da pessoa.
+
+| ID | Requisito |
+|---|---|
+| RF-73 | O administrador pode registrar um **desconto** em nome de outra pessoa: um pedido de reembolso com **valor negativo**, pelo mesmo formulário de Transações (D11), marcando a caixa "Desconto de valor já pago" que só aparece com "Lançar para" apontando outra pessoa. Quem não é administrador não cria desconto nem para si |
+| RF-74 | O desconto é um pedido como os outros: nasce `ENVIADA`, é aprovado pelo gestor, aparece na fila, em Aprovados e em Relatórios, marcado "desconto · já pago antes". No fechamento de lote ele **abate** do total: o lote soma pedidos e descontos com sinal, e o comprovante em PDF o lista com o valor negativo |
+| RF-75 | O lote nunca fecha com total negativo: se os descontos superam os pedidos aprovados do período, o fechamento é recusado com mensagem. Total zero é permitido — a pessoa compensou exatamente o que devia |
+| RF-76 | O desconto **nunca mexe no saldo da conta** da pessoa: é sempre gravado como pendente, e o botão de pago/pendente não o alcança. Não entra nas despesas por categoria do painel pessoal. A pessoa o vê em Transações, mas **não edita nem exclui** — só o administrador o remove, por estorno (RF-67) |
+| RF-77 | Desconto não parcela nem se marca como particular: a caixa força "pedir reembolso" e desliga "repetir/parcelar". O servidor impõe isso de novo, não confia na tela (Art. 5) |
+
 ### Finanças pessoais
 
 | ID | Requisito |
@@ -229,6 +251,7 @@ v4 é outra construção.
 | RNF-10 | Exportação gerada no navegador, sem custo de servidor |
 | RNF-12 | Documento de usuário sem o campo `dadosBancarios` é lido como "sem dados" e aciona o portão; lote sem a cópia usa o cadastro atual. Nenhuma migração automática (Art. 10) |
 | RNF-13 | Lançamento sem `lancadoPor` é lido como feito pelo próprio dono; lote sem `estornadoCents` é lido como sem estorno. Nenhuma migração (Art. 10) |
+| RNF-14 | Lançamento sem o campo `desconto` é lido como pedido comum; o valor negativo só existe quando `desconto` é verdadeiro. Nenhuma migração (Art. 10) |
 
 ## Fatores críticos de sucesso
 
@@ -272,3 +295,4 @@ O sistema está pronto para a equipe quando, verificado com contas reais:
 - [ ] O administrador lança um gasto em nome de um colaborador, com a conta e a categoria dele; o lançamento aparece para o colaborador marcado "lançado por", entra na fila e é aprovado e pago normalmente. Um colaborador que force o campo recebe recusa
 - [ ] O administrador estorna um pedido já pago: o lançamento some, o saldo da conta volta, a cópia aparece na lista de estornos, e o comprovante do lote passa a mostrar o valor estornado a compensar — sem mudar o total pago
 - [ ] Lançar duas vezes o mesmo valor na mesma data mostra o aviso com o lançamento parecido; a fila e Aprovados marcam o par
+- [ ] O administrador lança um desconto de R$ X em nome de um colaborador; ele aparece negativo na fila, é aprovado, e o lote seguinte da pessoa fecha com X a menos no total e no comprovante. Desconto maior que os pedidos aprovados é recusado no fechamento. O saldo da conta do colaborador não muda

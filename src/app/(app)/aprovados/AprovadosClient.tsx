@@ -8,6 +8,7 @@ import { exportarPedidosPDF, exportarPedidosXLSX, type LinhaPedido } from "@/lib
 import { rotulo, rotuloCurto } from "@/lib/core/aprovacao";
 import { atalhosDePeriodo, paraCampoDeData } from "@/lib/core/datas";
 import { marcarDuplicidades } from "@/lib/core/duplicidade";
+import { ROTULO_DE_DESCONTO } from "@/lib/core/desconto";
 import { somar } from "@/lib/core/money";
 import { Chip } from "@/components/ui/Chip";
 import { ModalEstorno, SeloDuplicidade } from "@/components/reembolso/ModalEstorno";
@@ -87,6 +88,7 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
   const [previa, setPrevia] = useState<{
     bloco: Bloco;
     quantidade: number;
+    descontos: number;
     totalCents: number;
     semDadosBancarios: boolean;
   } | null>(null);
@@ -119,14 +121,15 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
           // data e ninguém erra o recorte.
           desde: paraCampoDeData(ordenados[0].date),
           ate: paraCampoDeData(ordenados[ordenados.length - 1].date),
-          semComprovante: ordenados.filter((p) => !p.receiptUrl).length,
+          // Desconto não tem comprovante por natureza: não é cobrado dele.
+          semComprovante: ordenados.filter((p) => !p.receiptUrl && !p.desconto).length,
         };
       })
       .sort((a, b) => b.total - a.total);
   }, [pedidos]);
 
   const total = somar(...pedidos.map((p) => p.amount));
-  const semComprovante = pedidos.filter((p) => !p.receiptUrl).length;
+  const semComprovante = pedidos.filter((p) => !p.receiptUrl && !p.desconto).length;
   const maisAntigo = pedidos.reduce<Date | null>(
     (antigo, p) => (antigo === null || p.date < antigo ? p.date : antigo),
     null,
@@ -216,9 +219,9 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
       .map((p) => ({
         data: p.date,
         pessoa: p.userName,
-        descricao: p.description,
+        descricao: p.desconto ? `DESCONTO — ${p.description}` : p.description,
         categoria: p.categoryName,
-        comprovante: Boolean(p.receiptUrl),
+        comprovante: Boolean(p.receiptUrl) || p.desconto,
         situacao: rotulo(p.aprovacao),
         atendido: pago,
         atendidoEm: p.reimbursedAt,
@@ -383,7 +386,11 @@ export function AprovadosClient({ isAdmin, pedidos, pagos: pagosIniciais, equipe
                   <>
                     <p style={{ fontSize: "0.88rem" }}>
                       Vão ser marcados como pagos <strong>{previa.quantidade}</strong> pedido(s) de{" "}
-                      <strong>{bloco.nome}</strong>, de {formatDate(bloco.desde)} a {formatDate(bloco.ate)}, somando{" "}
+                      <strong>{bloco.nome}</strong>, de {formatDate(bloco.desde)} a {formatDate(bloco.ate)}
+                      {previa.descontos > 0 && (
+                        <>, já abatido(s) <strong style={{ color: "#f59e0b" }}>{previa.descontos} desconto(s)</strong></>
+                      )}
+                      , somando{" "}
                       <strong style={{ color: "var(--color-accent)" }}>{formatCurrency(previa.totalCents / 100)}</strong>.
                     </p>
 
@@ -657,7 +664,9 @@ function Linha({
             Estornar
           </button>
         )}
-        {p.receiptUrl ? (
+        {p.desconto ? (
+          <span style={{ fontSize: "0.72rem", color: "#f59e0b", fontWeight: 700 }}>{ROTULO_DE_DESCONTO}</span>
+        ) : p.receiptUrl ? (
           <a href={p.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.75rem", color: "var(--color-accent)", textDecoration: "none" }}>
             🧾 ver
           </a>
@@ -669,7 +678,7 @@ function Linha({
             fontWeight: 700,
             fontFamily: "var(--font-display)",
             whiteSpace: "nowrap",
-            color: pago ? "var(--color-muted)" : "inherit",
+            color: p.desconto ? "#f59e0b" : pago ? "var(--color-muted)" : "inherit",
           }}
         >
           {formatCurrency(p.amount)}

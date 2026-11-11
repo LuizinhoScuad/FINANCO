@@ -242,7 +242,7 @@ function intervalo(desde: string, ate: string) {
 export async function getPreviaDeLote(userId: string, desde: string, ate: string) {
   await requireAdmin();
   const parsed = Periodo.safeParse({ userId, desde, ate });
-  if (!parsed.success) return { quantidade: 0, totalCents: 0, semDadosBancarios: false };
+  if (!parsed.success) return { quantidade: 0, descontos: 0, totalCents: 0, semDadosBancarios: false };
 
   const { desde: de, ate: a } = intervalo(desde, ate);
   const [previa, perfil] = await Promise.all([
@@ -252,6 +252,7 @@ export async function getPreviaDeLote(userId: string, desde: string, ate: string
 
   return {
     quantidade: previa.quantidade,
+    descontos: previa.descontos,
     totalCents: previa.totalCents,
     semDadosBancarios: !perfil?.dadosBancarios,
   };

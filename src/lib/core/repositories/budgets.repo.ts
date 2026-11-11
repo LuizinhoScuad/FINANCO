@@ -54,6 +54,8 @@ export async function listarOrcamentos(mes: number, ano: number): Promise<Orcame
   const gastoPorCategoria = new Map<string, number>();
   for (const doc of gastos.docs) {
     const d = doc.data();
+    // Desconto é dívida com a empresa, não gasto (RF-76): fora do orçamento.
+    if (d.desconto === true) continue;
     const cid = texto(d.categoryId);
     gastoPorCategoria.set(cid, (gastoPorCategoria.get(cid) ?? 0) + numero(d.amount));
   }

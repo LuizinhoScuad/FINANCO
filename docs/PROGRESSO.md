@@ -14,6 +14,70 @@
 
 ## Sessões
 
+### 2026-11-11 — FASE 14: desconto de valor já pago
+
+**Horário de registro:** 11/11/2026 às 15:17
+
+**O que foi feito:**
+
+Pedido do Luciano, trazido pelo Luiz: *"percebeu lançamentos onde ele já
+efetuou o pagamento e gostaria que o sistema permitisse que ele mesmo fizesse
+um lançamento para outra pessoa, porém, um lançamento negativo [...] para
+deixar no mês corrente o valor negativo do que já foi pago anteriormente e não
+há como estornar, pois, o usuário já recebeu o dinheiro"*.
+
+1. **Desconto (RF-73 a RF-77, D22).** Caixa "Desconto de valor já pago" dentro
+   do bloco "Lançar para" em Transações — só aparece com outra pessoa
+   escolhida, só o administrador cria. O servidor impõe o que a tela promete:
+   `amount` **negativo**, despesa, reembolso, `PENDING`, sem parcelas. Nasce
+   `ENVIADA`, é aprovado como qualquer pedido e, no fechamento, **abate** do
+   total do lote. O sinal mora no valor de propósito: prévia, lote, Aprovados,
+   Relatórios, PDF e XLSX somam certo sem `if` novo em cada lugar.
+2. **Proteções.** Desconto nunca toca o saldo da conta (pendente para sempre,
+   alternar/editar/excluir recusados no repositório — só o estorno o alcança);
+   fica fora das despesas por categoria e do orçamento; lote com total
+   negativo é recusado (`loteFechaComTotal`), zero é aceito; desconto já
+   abatido num lote fechado não pode ser estornado.
+3. **Telas.** Selo "desconto · já pago antes" no lugar de "sem comprovante" na
+   fila, em Aprovados e em Relatórios; a prévia do fechamento diz "já
+   abatido(s) N desconto(s)"; PDF/XLSX prefixam "DESCONTO —".
+4. **Revisão de código antes do commit corrigiu 8 pontos**, um grave: o
+   `<select>` de tipo desabilitado sumia do FormData e o desconto nem salvava
+   (agora viaja num campo oculto). Os outros: orçamento e painel somavam o
+   negativo; "--R$" no Dashboard; sinal invertido na exportação pessoal;
+   estorno de desconto pago gravaria compensação negativa; estado da caixa
+   sobrevivia a uma falha de carga; botões inúteis na lista; contagem do lote
+   incluía descontos.
+
+**Sem migração** (RNF-14): lançamento sem `desconto` é pedido comum.
+
+**Arquivos criados/modificados:**
+- `specs/financo/01-SPEC.md` — v4.4 · `specs/financo/02-PLAN.md` — v4.4 (D22, fase 14, riscos)
+- `specs/financo/fases/FASE-14-DESCONTO-DE-VALOR-JA-PAGO.md` *(novo)*
+- `src/lib/core/desconto.ts` *(novo)* · `tests/desconto.test.ts` *(novo, 12 testes)*
+- `src/types/index.ts` · `src/lib/core/repositories/transactions.repo.ts` · `budgets.repo.ts`
+- `src/actions/transactions.ts` · `src/actions/reembolsos.ts`
+- `src/app/(app)/transacoes/TransacoesClient.tsx` · `admin/aprovacoes/AprovacoesClient.tsx` · `aprovados/AprovadosClient.tsx` · `relatorios/RelatoriosClient.tsx` · `dashboard/page.tsx`
+
+5. **Simulação de ponta a ponta sem credencial** (`npm run test:simulacao`,
+   novo). Esta máquina não tem `.env` preenchido nem Java para o emulador, então
+   nasceu `tests/integracao/apoio/firestore-em-memoria.ts`: um Firestore falso
+   com só o que os repositórios usam (coleções, consultas, `collectionGroup`,
+   transação, `batch`, `increment`, `arrayUnion`). O teste
+   `simulacao-desconto.test.ts` chama **as funções reais do app** — da action
+   `createTransaction` ao `fecharLote` — e percorre 17 passos: quem pode criar,
+   o que é gravado, a fila, as recusas ao colaborador, a prévia com sinal
+   (37 + 120,40 − 50 = 107,40), o fechamento recusado quando o desconto
+   supera os pedidos, o estorno do desconto errado, o lote fechado abatido e
+   a recusa de estornar o desconto já abatido. **Todos passaram.** Prova a
+   lógica; não prova regras, índices nem concorrência (Art. 3).
+
+**Pendências / próximos passos:**
+- Instalar o Java nesta máquina (pedido do Luiz) para o emulador oficial;
+  depois, `npm run test:integracao` com `.env` preenchido.
+- Deploy autorizado pelo Luiz às 15:17 após a simulação: commit + push em
+  `main`; o App Hosting publica sozinho.
+
 ### 2026-11-07 — FASE 13: o comprovante pode vir da galeria do celular
 
 **Horário de registro:** 07/11/2026 às 14:11

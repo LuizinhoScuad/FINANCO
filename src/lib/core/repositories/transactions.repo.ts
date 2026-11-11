@@ -20,6 +20,7 @@ import { criarUnico, emTransacao, ErroDeNegocio } from "@/lib/guardrails/transac
 import { avaliarTransicao, estornoAposPagamento, podeEditar, podeEstornar, podeExcluir } from "@/lib/core/aprovacao";
 import { lerDadosBancarios } from "@/lib/core/dados-bancarios";
 import { semelhantes } from "@/lib/core/duplicidade";
+import { ehDesconto, loteFechaComTotal } from "@/lib/core/desconto";
 import { fimDoDia, inicioDoDia, paraCampoDeData } from "@/lib/core/datas";
 import { paraCentavos } from "@/lib/core/money";
 import { getMonthRange } from "@/lib/utils";
@@ -54,6 +55,8 @@ export type DadosLancamento = {
   reembolso?: boolean;
   /** Quem registrou, quando não é o dono (o administrador em nome dela). */
   lancadoPor?: { uid: string; nome: string } | null;
+  /** Desconto de valor já pago: `amount` vem negativo (RF-73, D22). */
+  desconto?: boolean;
 };
 
 /**
@@ -97,6 +100,7 @@ function paraLancamento(id: string, d: Record<string, unknown>): Lancamento {
     reimbursedAt: paraDataOuNulo(d.reimbursedAt),
     lancadoPor: textoOuNulo(d.lancadoPor),
     lancadoPorNome: textoOuNulo(d.lancadoPorNome),
+    desconto: d.desconto === true,
   };
 }
 
@@ -247,10 +251,20 @@ function paraGravacao(d: DadosLancamento, extras: Record<string, unknown> = {}) 
     reembolso: d.reembolso === true,
     lancadoPor: d.lancadoPor?.uid ?? null,
     lancadoPorNome: d.lancadoPor?.nome ?? null,
+    desconto: d.desconto === true,
     createdAt: agora,
     updatedAt: agora,
     ...extras,
   };
+}
+
+/** O desconto só o administrador alcança, e só por estorno (RF-76). */
+function recusarSeDesconto(l: { desconto: boolean }) {
+  if (ehDesconto(l)) {
+    throw new ErroDeNegocio(
+      "Este é um desconto lançado pelo administrador: só ele pode removê-lo, por estorno.",
+    );
+  }
 }
 
 /**
@@ -296,17 +310,23 @@ export async function criarLancamento(
 ): Promise<void> {
   const esc = escopo ?? (await escopoPronto());
 
+  // Desconto nunca toca o saldo da conta: é dívida com a empresa, não gasto.
+  // Pendente para sempre, e o repositório não deixa alternar (RF-76, D22).
+  const gravar = ehDesconto(dados)
+    ? { ...dados, status: "PENDING", reembolso: true, type: "EXPENSE" }
+    : dados;
+
   await emTransacao(async (t) => {
-    await lerContaEmTransacao(t, esc, dados.accountId);
+    await lerContaEmTransacao(t, esc, gravar.accountId);
 
     criarUnico(
       t,
       esc.transactions.doc(idEnvio),
-      paraGravacao(dados, { isInstallment: false, ...aprovacaoInicial(dados.reembolso === true) }),
+      paraGravacao(gravar, { isInstallment: false, ...aprovacaoInicial(gravar.reembolso === true) }),
     );
 
-    if (dados.status === "COMPLETED") {
-      ajustarSaldoEmTransacao(t, esc, dados.accountId, deltaDeSaldo(dados.type, dados.amount));
+    if (gravar.status === "COMPLETED") {
+      ajustarSaldoEmTransacao(t, esc, gravar.accountId, deltaDeSaldo(gravar.type, gravar.amount));
     }
   });
 }
@@ -325,6 +345,9 @@ export async function criarParcelamento(
 ): Promise<void> {
   if (parcelas < 2 || parcelas > 72) {
     throw new ErroDeNegocio("A quantidade de parcelas deve ficar entre 2 e 72.");
+  }
+  if (ehDesconto(dados)) {
+    throw new ErroDeNegocio("Desconto não se parcela: lance o valor inteiro de uma vez.");
   }
 
   const esc = escopo ?? (await escopoPronto());
@@ -377,6 +400,7 @@ export async function atualizarLancamento(id: string, dados: DadosLancamento): P
     if (!atual.exists) throw new ErroDeNegocio("Lançamento não encontrado.");
 
     const anterior = paraLancamento(atual.id, atual.data() ?? {});
+    recusarSeDesconto(anterior);
 
     // Pedido já decidido é lastro de pagamento: ninguém mexe (Art. 2).
     if (!podeEditar(anterior.aprovacao)) {
@@ -422,6 +446,7 @@ export async function excluirLancamento(id: string): Promise<void> {
     if (!atual.exists) throw new ErroDeNegocio("Lançamento não encontrado.");
 
     const l = paraLancamento(atual.id, atual.data() ?? {});
+    recusarSeDesconto(l);
 
     if (!podeExcluir(l.aprovacao)) {
       throw new ErroDeNegocio(
@@ -507,6 +532,13 @@ export async function estornarLancamento(
     if (!podeEstornar(l.aprovacao)) throw new ErroDeNegocio("Este lançamento não pode ser estornado.");
 
     const aposPagamento = estornoAposPagamento(l.aprovacao);
+    // Um desconto já abatido num lote fechado é história: estorná-lo gravaria
+    // uma "compensação negativa" sem significado. Lance outro pedido em vez disso.
+    if (aposPagamento && ehDesconto(l)) {
+      throw new ErroDeNegocio(
+        "Este desconto já foi abatido num pagamento fechado e não pode ser estornado. Se foi a mais, lance um pedido comum no valor da diferença.",
+      );
+    }
     const loteRef = aposPagamento && l.paymentBatchId ? lotes().doc(l.paymentBatchId) : null;
 
     // Todas as leituras antes de qualquer escrita.
@@ -575,6 +607,7 @@ export async function alternarStatus(id: string): Promise<string> {
     if (!atual.exists) throw new ErroDeNegocio("Lançamento não encontrado.");
 
     const l = paraLancamento(atual.id, atual.data() ?? {});
+    recusarSeDesconto(l);
     await lerContaEmTransacao(t, esc, l.accountId);
 
     const novo = l.status === "COMPLETED" ? "PENDING" : "COMPLETED";
@@ -621,6 +654,8 @@ export async function despesasPorCategoria(filtros: { mes?: number; ano: number 
   const totais = new Map<string, { name: string; color: string; total: number }>();
   for (const doc of snap.docs) {
     const d = doc.data();
+    // Desconto é dívida com a empresa, não gasto: fora do painel pessoal (RF-76).
+    if (d.desconto === true) continue;
     const cat = mapaCategorias.get(texto(d.categoryId));
     if (!cat) continue;
     const atual = totais.get(texto(d.categoryId)) ?? { ...cat, total: 0 };
@@ -886,8 +921,11 @@ export async function previaDeFechamento(uid: string, desde: Date, ate: Date) {
 
   return {
     pedidos: elegiveis,
+    // Com sinal: os descontos abatem (D22).
     totalCents: elegiveis.reduce((s, l) => s + paraCentavos(l.amount), 0),
-    quantidade: elegiveis.length,
+    // Só o que é pedido de fato: um desconto não é "pedido atendido".
+    quantidade: elegiveis.filter((l) => !ehDesconto(l)).length,
+    descontos: elegiveis.filter(ehDesconto).length,
   };
 }
 
@@ -907,6 +945,9 @@ export async function fecharLote(
   if (previa.quantidade === 0) {
     throw new ErroDeNegocio("Não há pedidos aprovados nesse período para essa pessoa.");
   }
+  // Os descontos abatem com sinal; o lote nunca fecha devendo (RF-75).
+  const veredito = loteFechaComTotal(previa.totalCents);
+  if (!veredito.ok) throw new ErroDeNegocio(veredito.motivo);
   if (previa.quantidade > 400) {
     throw new ErroDeNegocio("Período grande demais para um lote. Feche em intervalos menores.");
   }

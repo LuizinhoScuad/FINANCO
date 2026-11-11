@@ -194,9 +194,9 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe, to
       .map((p) => ({
         data: p.date,
         pessoa: p.userName,
-        descricao: p.description,
+        descricao: p.desconto ? `DESCONTO — ${p.description}` : p.description,
         categoria: p.categoryName,
-        comprovante: Boolean(p.receiptUrl),
+        comprovante: Boolean(p.receiptUrl) || p.desconto,
         situacao: rotulo(p.aprovacao),
         atendido: jaAtendido(p.aprovacao),
         atendidoEm: p.reimbursedAt,
@@ -475,6 +475,7 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe, to
                     <span>{formatDate(p.date)}</span>
                     {isAdmin && <span>{p.userName}</span>}
                     <span>{p.categoryName}</span>
+                    {p.desconto && <span style={{ color: "#f59e0b", fontWeight: 700 }}>desconto · já pago antes</span>}
                   </div>
 
                   {p.aprovacao === "REJEITADA" && p.rejectionReason && (
@@ -537,7 +538,10 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe, to
                       {isAdmin && <td style={{ padding: "0.75rem 1rem" }}>{p.userName}</td>}
                       <td style={{ padding: "0.75rem 1rem" }}>
                         <div>{p.description}</div>
-                        <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px" }}>{p.categoryName}</div>
+                        <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px" }}>
+                          {p.categoryName}
+                          {p.desconto && <span style={{ color: "#f59e0b", fontWeight: 700 }}> · desconto · já pago antes</span>}
+                        </div>
                         {p.aprovacao === "REJEITADA" && p.rejectionReason && (
                           <div style={{ fontSize: "0.7rem", color: "var(--color-danger)", marginTop: "2px" }}>
                             Motivo: {p.rejectionReason}
@@ -546,7 +550,9 @@ export function RelatoriosClient({ isAdmin, pedidos: iniciais, lotes, equipe, to
                       </td>
                       {!isAdmin && <td style={{ padding: "0.75rem 1rem", color: "var(--color-muted)" }}>{p.categoryName}</td>}
                       <td style={{ padding: "0.75rem 1rem" }}>
-                        {p.receiptUrl ? (
+                        {p.desconto ? (
+                          <span style={{ color: "#f59e0b", fontSize: "0.72rem" }}>—</span>
+                        ) : p.receiptUrl ? (
                           <a href={p.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", textDecoration: "none" }}>
                             🧾 ver
                           </a>

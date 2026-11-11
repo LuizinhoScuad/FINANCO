@@ -13,6 +13,7 @@ import { estornarLancamento } from "@/actions/estornos";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { somar } from "@/lib/core/money";
 import { marcarDuplicidades } from "@/lib/core/duplicidade";
+import { ROTULO_DE_DESCONTO } from "@/lib/core/desconto";
 import { ModalEstorno, SeloDuplicidade } from "@/components/reembolso/ModalEstorno";
 import type { PedidoDeReembolso } from "@/types";
 
@@ -49,6 +50,7 @@ export function AprovacoesClient({ fila, equipe }: Props) {
   const [ate, setAte] = useState("");
   const [previa, setPrevia] = useState<{
     quantidade: number;
+    descontos: number;
     totalCents: number;
     semDadosBancarios: boolean;
   } | null>(null);
@@ -244,7 +246,11 @@ export function AprovacoesClient({ fila, equipe }: Props) {
                     {p.lancadoPorNome && <span style={{ color: "#60a5fa" }}> · lançado por {p.lancadoPorNome}</span>}
                   </div>
                   <div style={{ marginTop: "0.4rem" }}>
-                    {p.receiptUrl ? (
+                    {p.desconto ? (
+                      <span style={{ color: "#f59e0b", fontSize: "0.75rem", fontWeight: 700 }}>
+                        − {ROTULO_DE_DESCONTO}: abate do próximo pagamento
+                      </span>
+                    ) : p.receiptUrl ? (
                       <a href={p.receiptUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--color-accent)", fontSize: "0.78rem", textDecoration: "none" }}>
                         🧾 ver comprovante
                       </a>
@@ -257,7 +263,7 @@ export function AprovacoesClient({ fila, equipe }: Props) {
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700, fontFamily: "var(--font-display)", fontSize: "1.05rem" }}>
+                  <span style={{ fontWeight: 700, fontFamily: "var(--font-display)", fontSize: "1.05rem", color: p.desconto ? "#f59e0b" : "inherit" }}>
                     {formatCurrency(p.amount)}
                   </span>
                   <button
@@ -333,7 +339,11 @@ export function AprovacoesClient({ fila, equipe }: Props) {
             ) : (
               <>
                 <p style={{ fontSize: "0.9rem" }}>
-                  <strong>{previa.quantidade}</strong> pedido(s) aprovado(s), somando{" "}
+                  <strong>{previa.quantidade}</strong> pedido(s) aprovado(s)
+                  {previa.descontos > 0 && (
+                    <>, já abatido(s) <strong style={{ color: "#f59e0b" }}>{previa.descontos} desconto(s)</strong></>
+                  )}
+                  , somando{" "}
                   <strong style={{ color: "var(--color-accent)" }}>{formatCurrency(previa.totalCents / 100)}</strong>.
                 </p>
 

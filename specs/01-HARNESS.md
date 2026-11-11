@@ -142,6 +142,7 @@ Se algo escapar: `node scripts/limpar-residuo-teste.mjs`.
 | `npm run build` | Compila e todas as rotas montam |
 | `npm run verificar:estrutura` | O repositório continua no formato deste documento |
 | `npm run test:integracao` | O ciclo real contra o Firestore |
+| `npm run test:simulacao` | O ciclo do desconto de ponta a ponta num Firestore **em memória** (`tests/integracao/apoio/firestore-em-memoria.ts`) — para a máquina sem `.env`; prova a lógica, não as regras nem os índices |
 | `npm run test:fumaca` | As telas carregam autenticadas, e o isolamento entre pessoas vale |
 | `npm run test:consultas` | Toda consulta tem índice publicado |
 | `npm run test:responsivo` | Nenhuma tela transborda nem exige arrastar de lado no celular |

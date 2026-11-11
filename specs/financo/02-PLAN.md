@@ -1,14 +1,17 @@
 ---
 programa: financo
 tipo: plan
-versao: 4.3
+versao: 4.4
 criado: 2026-08-09
-revisado: 2026-11-07
+revisado: 2026-11-11
 herda: ../00-CONSTITUTION.md
 referencia: 01-SPEC.md
 ---
 
 # PLAN — Financo v4
+
+> **Revisão v4.4 (11/11/2026).** Desconto de valor já pago. Decisão nova: D22
+> (o desconto é um pedido com valor negativo, não um estado nem uma coleção).
 
 > **Revisão v4.3 (07/11/2026).** O comprovante pode vir da galeria do celular.
 > Decisão nova: D21 (câmera e galeria são dois `<input type=file>`; só o
@@ -72,6 +75,7 @@ lib/
     aprovacao.ts             máquina de estados do reembolso (pura, testável)
     dados-bancarios.ts       CPF, chave PIX e leitura do mapa (pura, testável)
     duplicidade.ts           o que conta como lançamento gêmeo (pura, testável)
+    desconto.ts              sinal e regras do desconto de valor já pago (pura, testável)
     exports/cliente.ts       PDF e XLSX gerados no navegador
   guardrails/                proteções — Art. 1, 2 e 6
     transactions.ts          runTransaction / writeBatch
@@ -116,6 +120,7 @@ e que lê coleções inteiras em memória) — deletado ao fim da Fase 4.
 | D18 | Lançar em nome de alguém é um **seletor dentro do formulário de Transações**, não uma tela nem uma action nova de criação. O mesmo `createTransaction` recebe `paraUid`; o servidor troca o escopo (`escopoProntoDe(uid)`) só depois de confirmar o papel | Preserva D11: continua existindo uma porta de lançamento. O que muda é de quem é a subcoleção, e isso é decidido no servidor pelo papel (Art. 5). Conta e categoria vêm da pessoa alvo porque o lançamento vive na subcoleção dela — usar as do administrador deixaria referência órfã |
 | D19 | Estorno = **remoção com cópia**: numa transação só, o documento é copiado para `estornos/{id}` (com motivo, autor, situação na época), o saldo da conta é desfeito e o original é apagado. Lote pago **não tem o total reescrito**: ganha `estornadoCents` e a lista `estornos[]` | Um estado `ESTORNADA` no próprio lançamento exigiria excluí-lo de todo agregado pessoal (resumo do mês, orçamento, saldo) e de toda listagem — dezenas de pontos para errar. Apagar com cópia mantém a máquina de estados intacta e a reversão possível (Art. 6). O `totalCents` do lote é o que de fato saiu do caixa: reescrevê-lo mentiria sobre o passado (Art. 3); o estornado fica ao lado, como valor a compensar |
 | D20 | Duplicidade é **função pura** (`lib/core/duplicidade.ts`): mesma pessoa, mesmo valor em centavos, mesmo dia de calendário em UTC. O servidor a aplica antes de gravar (`verificarDuplicidade`), consultando só o dia do lançamento; as telas a aplicam sobre a lista já carregada para marcar pares | Uma regra, testada sem banco, usada nos dois lugares — a tela e o servidor nunca discordam sobre o que é gêmeo. A consulta recorta por dia na subcoleção da pessoa: nenhum índice novo e nada carregado inteiro (RNF-03) |
+| D22 | O desconto é um **pedido de reembolso com `amount` negativo** e a marca `desconto: true` — não um estado novo na máquina de aprovação, não uma coleção, não um campo de sinal à parte. Sempre `status: "PENDING"`; o dono não edita, não exclui nem alterna o status | Com o valor já negativo no documento, **toda soma existente fica certa sozinha**: prévia e total do lote, Aprovados, Relatórios, PDF e XLSX usam `amount` e passam a abater sem um `if` em cada lugar. Um campo de sinal separado exigiria lembrar dele em cada soma — o esquecimento silencioso que o Art. 2 proíbe. O `PENDING` forçado é o que mantém o saldo da conta fora disso: o desconto é uma dívida com a empresa, não um gasto. Só o administrador cria, e só por estorno remove — a marca sobrevive à edição do dono porque a edição é recusada |
 | D21 | Câmera e galeria são **dois `<input type="file">`** no mesmo formulário, ligados ao mesmo `handleOCR`: o que os distingue é só o atributo `capture="environment"` (com ele, o celular abre a câmera; sem ele, a biblioteca de fotos). No "+ recibo" da lista, o input único perde o `capture` e o próprio sistema do celular oferece câmera ou galeria | Nenhum componente novo, nenhuma biblioteca, nenhuma permissão extra — é o navegador que já sabe abrir os dois. Upload, regras do Storage e OCR não mudam: a foto chega pelo mesmo caminho, só de outra origem |
 
 ## Harness de orquestração
@@ -174,6 +179,7 @@ Guardião vem depois que existe o que vigiar.
 | [11](fases/FASE-11-DADOS-PARA-REEMBOLSO.md) | Dados para reembolso: portão obrigatório, "Meus dados", cópia no lote, comprovante e painel | ⚙️ implementada — falta validar com dados reais |
 | [12](fases/FASE-12-GESTOR-LANCA-ESTORNA-E-DUPLICIDADE.md) | Gestor lança em nome de alguém, estorna com cópia e motivo, e o sistema alerta duplicidade | ⚙️ implementada — falta validar com dados reais |
 | [13](fases/FASE-13-RECIBO-DA-GALERIA.md) | O comprovante pode vir da galeria do celular, além da câmera | ⚙️ implementada — falta validar no celular |
+| [14](fases/FASE-14-DESCONTO-DE-VALOR-JA-PAGO.md) | Desconto de valor já pago: pedido negativo do gestor que abate do próximo lote | ⚙️ implementada — falta validar com dados reais |
 
 As fases 6 e 7 chegaram a ser implementadas e foram desfeitas na revisão v3. Os
 arquivos delas continuam em `fases/` como registro histórico — não são trabalho
@@ -195,3 +201,5 @@ a fazer.
 | Portão de dados bancários barrar as sondas | `fumaca.mjs` semeia o usuário descartável já com os dados; as sondas que entram com a conta real do administrador exigem que ele tenha preenchido o próprio cadastro — pré-condição declarada na Fase 11 |
 | Estorno de item pago deixar lote e comprovante contando histórias diferentes | O lote guarda o estornado **ao lado** do total pago, nunca no lugar dele; o comprovante lê os dois e imprime o bloco de estornos. A cópia em `estornos/` é a prova do que foi removido |
 | Colaborador forjar `paraUid` e lançar na subcoleção de outro | O escopo só troca depois de `requireActiveUser` confirmar `role === "ADMIN"`; do contrário a action devolve recusa tipada. Coberto pela sonda de fumaça |
+| Valor negativo vazar para o saldo da conta ou para o painel pessoal | O desconto é gravado `PENDING` e o repositório recusa alternar, editar ou excluir; `despesasPorCategoria` o ignora. O resumo do mês só soma efetivados |
+| Lote fechar devendo (total negativo) | `fecharLote` recusa total < 0 com mensagem; a prévia já mostra o total com sinal |

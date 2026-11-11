@@ -173,7 +173,7 @@ export default async function DashboardPage() {
                                         color: tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)",
                                     }}
                                 >
-                                    {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                    {tx.desconto ? formatCurrency(Number(tx.amount)) : `${tx.type === "INCOME" ? "+" : "-"}${formatCurrency(Number(tx.amount))}`}
                                 </span>
                             </div>
                         ))}

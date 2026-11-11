@@ -115,6 +115,13 @@ export interface Transaction {
      */
     lancadoPor: string | null;
     lancadoPorNome: string | null;
+
+    /**
+     * Desconto de valor já pago (RF-73): pedido de reembolso com `amount`
+     * NEGATIVO, criado pelo administrador em nome da pessoa, que abate do
+     * próximo lote. Ausente = pedido comum (RNF-14).
+     */
+    desconto: boolean;
 }
 
 /** Lançamento de reembolso com o dono identificado — visão do gestor. */

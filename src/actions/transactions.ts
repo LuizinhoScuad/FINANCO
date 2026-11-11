@@ -22,6 +22,7 @@ import { buscarPerfil } from "@/lib/core/repositories/users.repo";
 import { escopoPronto, escopoProntoDe, type Escopo } from "@/lib/core/firestore";
 import { requireActiveUser, requireAdmin } from "@/lib/auth";
 import { diaDeCalendario } from "@/lib/core/datas";
+import { valorDeDesconto } from "@/lib/core/desconto";
 import { ErroDeNegocio, traduzirErro } from "@/lib/guardrails/transactions";
 import { fail, failFromZod, mensagemDeErro, ok, type Result } from "@/lib/guardrails/result";
 import type { Account, AprovacaoStatus, Category } from "@/types";
@@ -46,6 +47,8 @@ const Lancamento = z.object({
   submissionId: z.string().min(8).optional(),
   /** Em nome de quem o administrador está lançando (RF-64). Ausente = eu mesmo. */
   paraUid: z.string().optional(),
+  /** Desconto de valor já pago (RF-73). Só com `paraUid` de outra pessoa. */
+  desconto: z.coerce.boolean().default(false),
 });
 
 /**
@@ -148,6 +151,7 @@ function extrair(formData: FormData) {
   if (raw.isInstallment === "on") raw.isInstallment = "true";
   // Caixa desmarcada não é enviada pelo navegador — a ausência é o "false".
   raw.reembolso = raw.reembolso === "on" || raw.reembolso === "true" ? "true" : "";
+  raw.desconto = raw.desconto === "on" || raw.desconto === "true" ? "true" : "";
   if (raw.receiptUrl === "") delete raw.receiptUrl;
   if (raw.paraUid === "") delete raw.paraUid;
   return raw;
@@ -181,9 +185,29 @@ export async function createTransaction(formData: FormData): Promise<Result> {
   const alvo = await resolverAlvo(parsed.data.paraUid);
   if (!alvo.ok) return alvo;
   const { esc, lancadoPor } = alvo.data;
-  const dados = { ...paraDados(parsed.data), lancadoPor };
+  let dados: DadosLancamento = { ...paraDados(parsed.data), lancadoPor };
+
+  if (parsed.data.desconto) {
+    // Só o administrador, e só em nome de outra pessoa: `lancadoPor` nulo
+    // significa "o próprio dono", e desconto para si não existe (RF-73).
+    if (!lancadoPor) {
+      return fail("Desconto só pode ser lançado pelo administrador em nome de outra pessoa.");
+    }
+    // O que a tela promete, o servidor impõe (RF-77, D22).
+    dados = {
+      ...dados,
+      amount: valorDeDesconto(parsed.data.amount),
+      type: "EXPENSE",
+      status: "PENDING",
+      reembolso: true,
+      desconto: true,
+    };
+  }
 
   try {
+    if (parsed.data.desconto && parsed.data.isInstallment) {
+      return fail("Desconto não se parcela: lance o valor inteiro de uma vez.");
+    }
     if (parsed.data.isInstallment && (parsed.data.totalInstallments ?? 0) > 1) {
       await criarParcelamento(dados, parsed.data.totalInstallments!, idEnvio, esc);
     } else {
@@ -210,6 +234,7 @@ const Candidato = z.object({
   amount: z.coerce.number().positive(),
   date: z.string().min(1),
   paraUid: z.string().optional(),
+  desconto: z.coerce.boolean().default(false),
 });
 
 /**
@@ -227,7 +252,8 @@ export async function verificarDuplicidade(formData: FormData): Promise<Result<L
 
   try {
     const gemeos = await listarSemelhantes(alvo.data.esc, {
-      amount: parsed.data.amount,
+      // O mesmo sinal que será gravado: desconto só é gêmeo de outro desconto.
+      amount: parsed.data.desconto ? valorDeDesconto(parsed.data.amount) : parsed.data.amount,
       date: diaDeCalendario(parsed.data.date),
     });
     return ok(

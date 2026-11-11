@@ -70,6 +70,18 @@ export function TransacoesClient({
     const categories = paraUid && escopoAlheio ? escopoAlheio.categories : minhasCategorias;
     const nomeAlvo = equipe.find((e) => e.uid === paraUid)?.name ?? "";
 
+    // Desconto de valor já pago (RF-73): pedido negativo em nome da pessoa.
+    // Só existe atrás do "Lançar para"; marcado, força reembolso e despesa.
+    const [desconto, setDesconto] = useState(false);
+    function marcarDesconto(ligado: boolean) {
+        setDesconto(ligado);
+        if (ligado) {
+            setReembolso(true);
+            setTxType("EXPENSE");
+            setRepeat(false);
+        }
+    }
+
     // Aviso de duplicidade (RF-70): o servidor diz se há gêmeo; a pessoa decide.
     const [semelhantes, setSemelhantes] = useState<LancamentoSemelhante[] | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
@@ -79,13 +91,17 @@ export function TransacoesClient({
         setEscopoAlheio(null);
         setSemelhantes(null);
         setErro("");
-        if (!uid) return;
+        if (!uid) {
+            setDesconto(false);
+            return;
+        }
         setCarregandoEscopo(true);
         const res = await getContasECategoriasDe(uid);
         setCarregandoEscopo(false);
         if (!res.ok) {
             setErro(res.error);
             setParaUid("");
+            setDesconto(false);
             return;
         }
         setEscopoAlheio(res.data);
@@ -231,6 +247,7 @@ export function TransacoesClient({
         setSemelhantes(null);
         setParaUid("");
         setEscopoAlheio(null);
+        setDesconto(false);
         setIdEnvio(crypto.randomUUID());
     }
 
@@ -303,7 +320,8 @@ export function TransacoesClient({
                 conta: tx.account.name,
                 tipo: tx.type === "INCOME" ? "Receita" : "Despesa",
                 situacao: tx.status === "COMPLETED" ? "Pago" : "Pendente",
-                valor: tx.type === "INCOME" ? Number(tx.amount) : -Number(tx.amount),
+                // Desconto já carrega o sinal (D22); os outros ganham o sinal pelo tipo.
+                valor: tx.desconto ? Number(tx.amount) : tx.type === "INCOME" ? Number(tx.amount) : -Number(tx.amount),
             }));
     }
 
@@ -467,9 +485,9 @@ export function TransacoesClient({
                                     <span className="cartao-titulo">{tx.description}</span>
                                     <span
                                         className="cartao-valor"
-                                        style={{ color: tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}
+                                        style={{ color: tx.desconto ? "#f59e0b" : tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}
                                     >
-                                        {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                        {tx.desconto ? formatCurrency(Number(tx.amount)) : `${tx.type === "INCOME" ? "+" : "-"}${formatCurrency(Number(tx.amount))}`}
                                     </span>
                                 </div>
 
@@ -479,6 +497,7 @@ export function TransacoesClient({
                                     <span>{tx.account.name}</span>
                                     {tx.isInstallment && <span>parcela {tx.installment}/{tx.totalInstallments}</span>}
                                     {tx.payee && <span style={{ color: "var(--color-accent)" }}>{tx.payee}</span>}
+                                    {tx.desconto && <span style={{ color: "#f59e0b", fontWeight: 700 }}>desconto · já pago antes</span>}
                                     {tx.lancadoPorNome && <span style={{ color: "#60a5fa" }}>lançado por {tx.lancadoPorNome}</span>}
                                 </div>
 
@@ -491,7 +510,8 @@ export function TransacoesClient({
                                 <div className="cartao-acoes">
                                     <button
                                         onClick={() => handleToggleStatus(tx.id)}
-                                        disabled={isPending}
+                                        disabled={isPending || tx.desconto}
+                                        title={tx.desconto ? "Desconto não mexe no saldo: fica sempre pendente" : undefined}
                                         style={{
                                             backgroundColor: tx.status === "COMPLETED" ? "rgba(0, 217, 139, 0.1)" : "rgba(255, 193, 7, 0.1)",
                                             color: tx.status === "COMPLETED" ? "var(--color-accent)" : "#ffc107",
@@ -540,14 +560,16 @@ export function TransacoesClient({
                                         </button>
                                     )}
 
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick={() => handleDelete(tx.id)}
-                                        disabled={isPending}
-                                        style={{ padding: "4px 10px", fontSize: "0.68rem", marginLeft: "auto" }}
-                                    >
-                                        Excluir
-                                    </button>
+                                    {!tx.desconto && (
+                                        <button
+                                            className="btn btn-danger"
+                                            onClick={() => handleDelete(tx.id)}
+                                            disabled={isPending}
+                                            style={{ padding: "4px 10px", fontSize: "0.68rem", marginLeft: "auto" }}
+                                        >
+                                            Excluir
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -577,7 +599,8 @@ export function TransacoesClient({
                                         <button
                                             className={`badge`}
                                             onClick={() => handleToggleStatus(tx.id)}
-                                            disabled={isPending}
+                                            disabled={isPending || tx.desconto}
+                                            title={tx.desconto ? "Desconto não mexe no saldo: fica sempre pendente" : undefined}
                                             style={{
                                                 backgroundColor: tx.status === "COMPLETED" ? "rgba(0, 217, 139, 0.1)" : "rgba(255, 193, 7, 0.1)",
                                                 color: tx.status === "COMPLETED" ? "var(--color-accent)" : "#ffc107",
@@ -635,6 +658,7 @@ export function TransacoesClient({
                                         )}
                                         <div style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "2px", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
                                             {tx.payee && <span style={{ color: "var(--color-accent)" }}>{tx.payee}</span>}
+                                            {tx.desconto && <span style={{ color: "#f59e0b", fontWeight: 700 }}>desconto · já pago antes</span>}
                                             {tx.lancadoPorNome && <span style={{ color: "#60a5fa" }}>lançado por {tx.lancadoPorNome}</span>}
                                             {tx.tags && <span>#{tx.tags.replace(/,/g, " #")}</span>}
                                             {tx.receiptUrl ? (
@@ -679,18 +703,20 @@ export function TransacoesClient({
                                     </td>
                                     <td style={{ padding: "0.75rem 1rem", color: "var(--color-muted)" }}>{tx.account.name}</td>
                                     <td style={{ padding: "0.75rem 1rem", color: "var(--color-muted)", whiteSpace: "nowrap" }}>{formatDate(tx.date)}</td>
-                                    <td style={{ padding: "0.75rem 1rem", fontWeight: 700, fontFamily: "var(--font-display)", color: tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}>
-                                        {tx.type === "INCOME" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                    <td style={{ padding: "0.75rem 1rem", fontWeight: 700, fontFamily: "var(--font-display)", color: tx.desconto ? "#f59e0b" : tx.type === "INCOME" ? "var(--color-accent)" : "var(--color-danger)" }}>
+                                        {tx.desconto ? formatCurrency(Number(tx.amount)) : `${tx.type === "INCOME" ? "+" : "-"}${formatCurrency(Number(tx.amount))}`}
                                     </td>
                                     <td style={{ padding: "0.75rem 1rem" }}>
-                                        <button
-                                            className="btn btn-danger"
-                                            onClick={() => handleDelete(tx.id)}
-                                            disabled={isPending}
-                                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
-                                        >
-                                            ✕
-                                        </button>
+                                        {!tx.desconto && (
+                                            <button
+                                                className="btn btn-danger"
+                                                onClick={() => handleDelete(tx.id)}
+                                                disabled={isPending}
+                                                style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
+                                            >
+                                                ✕
+                                            </button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -720,7 +746,9 @@ export function TransacoesClient({
                     <div className="card animate-scale-up modal-card">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>
-                                {paraUid && nomeAlvo ? `Lançamento para ${nomeAlvo}` : "Nova Transação"}
+                                {paraUid && nomeAlvo
+                                    ? desconto ? `Desconto para ${nomeAlvo}` : `Lançamento para ${nomeAlvo}`
+                                    : "Nova Transação"}
                             </h2>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                                 <label style={{ fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -771,6 +799,36 @@ export function TransacoesClient({
                                                 : `O lançamento entra em Transações de ${nomeAlvo}, com a conta e a categoria dela, marcado como lançado por você. Vai para a fila como qualquer pedido.`}
                                         </p>
                                     )}
+
+                                    {/* Desconto de valor já pago (RF-73): só em nome de outra
+                                        pessoa. O servidor impõe de novo tudo o que a caixa promete. */}
+                                    {paraUid && !carregandoEscopo && (
+                                        <div
+                                            style={{
+                                                marginTop: "0.75rem",
+                                                padding: "0.7rem 0.75rem",
+                                                borderRadius: "4px",
+                                                border: `1px solid ${desconto ? "rgba(245, 158, 11, 0.55)" : "var(--color-border)"}`,
+                                                backgroundColor: desconto ? "rgba(245, 158, 11, 0.08)" : "transparent",
+                                            }}
+                                        >
+                                            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", cursor: "pointer", fontWeight: 600, color: desconto ? "#f59e0b" : "inherit" }}>
+                                                <input
+                                                    type="checkbox"
+                                                    name="desconto"
+                                                    checked={desconto}
+                                                    onChange={(e) => marcarDesconto(e.target.checked)}
+                                                    style={{ width: "16px", height: "16px", accentColor: "#f59e0b" }}
+                                                />
+                                                Desconto de valor já pago
+                                            </label>
+                                            <p style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "0.4rem", lineHeight: 1.5 }}>
+                                                {desconto
+                                                    ? `Entra como pedido NEGATIVO de ${nomeAlvo}: vai para a fila, você aprova, e o valor é abatido do próximo pagamento dela. Não mexe no saldo da conta dela. Digite o valor positivo — o sinal é do sistema.`
+                                                    : "Para acertar um valor pago a mais ou em duplicidade quando o dinheiro já está com a pessoa: o pedido entra negativo e abate do próximo lote."}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -782,7 +840,11 @@ export function TransacoesClient({
                                         className="input-base"
                                         value={txType}
                                         onChange={(e) => setTxType(e.target.value as "INCOME" | "EXPENSE")}
+                                        disabled={desconto}
                                     >
+                                        {/* Controle desabilitado não vai no FormData: o valor
+                                            forçado viaja neste campo oculto. */}
+                                        {desconto && <input type="hidden" name="type" value="EXPENSE" form="tx-form" />}
                                         <option value="EXPENSE">Despesa</option>
                                         <option value="INCOME">Receita</option>
                                     </select>
@@ -870,7 +932,7 @@ export function TransacoesClient({
                                     />
                                 </div>
                                 <div>
-                                    <label className="label-sm">Valor (R$)</label>
+                                    <label className="label-sm">{desconto ? "Valor do desconto (R$)" : "Valor (R$)"}</label>
                                     <input
                                         name="amount"
                                         type="number"
@@ -938,12 +1000,15 @@ export function TransacoesClient({
                                         name="reembolso"
                                         checked={reembolso}
                                         onChange={(e) => setReembolso(e.target.checked)}
+                                        disabled={desconto}
                                         style={{ width: "16px", height: "16px", accentColor: "var(--color-accent)" }}
                                     />
                                     Pedir reembolso da empresa
                                 </label>
                                 <p style={{ fontSize: "0.7rem", color: "var(--color-muted)", marginTop: "0.45rem", lineHeight: 1.5 }}>
-                                    {reembolso
+                                    {desconto
+                                        ? "Desconto é sempre um pedido de reembolso — negativo."
+                                        : reembolso
                                         ? "Vai para a fila do gestor e aparece nos Relatórios. Anexe o comprovante — sem ele o pedido fica marcado como “sem comprovante”."
                                         : "Lançamento particular: não entra na fila de aprovação nem nos Relatórios de reembolso."}
                                 </p>
@@ -956,6 +1021,7 @@ export function TransacoesClient({
                                         name="isInstallment"
                                         checked={repeat}
                                         onChange={(e) => setRepeat(e.target.checked)}
+                                        disabled={desconto}
                                         style={{ width: "16px", height: "16px", accentColor: "var(--color-accent)" }}
                                     />
                                     Repetir / Parcelar Transação
